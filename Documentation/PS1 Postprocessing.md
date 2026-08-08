@@ -8,7 +8,7 @@
 |![](./Figures/Postprocessing_4.png)|![](./Figures/Postprocessing_2.png)|
 |---|---|
 
-### 2. Create Material instance from the M_PSX -> M_PSX. e can also configure the Values
+### 2. Create Material instance from the M_PSX -> M_PSX. We can also configure the Values
 
 |![](./Figures/Postprocessing_5.png)|![](./Figures/Postprocessing_3.png)|
 |---|---|
