@@ -13,12 +13,17 @@ public class TimeLoop : ModuleRules
 			"CoreUObject",
 			"Engine",
 			"InputCore",
+			"UMG",
+			"Slate",
+			"SlateCore",
 		]);
 
 		PublicIncludePaths.AddRange([
 			"TimeLoop",
 			"TimeLoop/Actor",
 			"TimeLoop/Components",
+			"TimeLoop/Core",
+			"TimeLoop/UI",
 		]);
 
 		PrivateDependencyModuleNames.AddRange(new string[] {  });

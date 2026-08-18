@@ -65,9 +65,6 @@ protected:
 
 	// Vignette
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Camera Effects|Vignette")
-	bool bVignette = true;
-
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Camera Effects|Vignette")
 	float DefaultVignetteIntensity = 0.4f;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Camera Effects|Vignette")
@@ -99,6 +96,11 @@ protected:
 
 	UPROPERTY(BlueprintReadWrite, Category = "Camera Effects|Vignette")
 	bool bIsRecovering = false;
+
+	bool bWasRecovering = false;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Camera Effects|Vignette")
+    bool bVignette = true;
 
 	UPROPERTY(BlueprintReadWrite, EditDefaultsOnly, Category = "Camera Effects|Leaning")
 	bool bLeaning = true;
