@@ -2,6 +2,8 @@
 
 #include "TimeLoopGameInstance.h"
 #include "Kismet/GameplayStatics.h"
+#include "UObject/UObjectGlobals.h"
+#include "UObject/Package.h"
 
 UTimeLoopGameInstance::UTimeLoopGameInstance()
 {
@@ -22,36 +24,34 @@ void UTimeLoopGameInstance::Shutdown()
 	Super::Shutdown();
 }
 
-void UTimeLoopGameInstance::OpenMainMenu()
+bool UTimeLoopGameInstance::OpenMainMenu()
 {
 	if (!MainMenuMapName.IsNone())
 	{
-		OpenLevelByName(MainMenuMapName);
+		return OpenLevelByName(MainMenuMapName);
 	}
-	else
-	{
-		UE_LOG(LogTemp, Warning, TEXT("TimeLoopGameInstance: MainMenuMapName is not set!"));
-	}
+
+	UE_LOG(LogTemp, Warning, TEXT("TimeLoopGameInstance: MainMenuMapName is not set!"));
+	return false;
 }
 
-void UTimeLoopGameInstance::OpenGameplayLevel()
+bool UTimeLoopGameInstance::OpenGameplayLevel()
 {
 	if (!GameplayMapName.IsNone())
 	{
-		OpenLevelByName(GameplayMapName);
+		return OpenLevelByName(GameplayMapName);
 	}
-	else
-	{
-		UE_LOG(LogTemp, Warning, TEXT("TimeLoopGameInstance: GameplayMapName is not set!"));
-	}
+
+	UE_LOG(LogTemp, Warning, TEXT("TimeLoopGameInstance: GameplayMapName is not set!"));
+	return false;
 }
 
-void UTimeLoopGameInstance::OpenLevelByName(FName LevelName)
+bool UTimeLoopGameInstance::OpenLevelByName(const FName LevelName)
 {
 	if (LevelName.IsNone())
 	{
 		UE_LOG(LogTemp, Warning, TEXT("TimeLoopGameInstance::OpenLevelByName: LevelName is None!"));
-		return;
+		return false;
 	}
 
 	UE_LOG(LogTemp, Log, TEXT("TimeLoopGameInstance: Opening level %s..."), *LevelName.ToString());
@@ -62,6 +62,68 @@ void UTimeLoopGameInstance::OpenLevelByName(FName LevelName)
 	}
 
 	UGameplayStatics::OpenLevel(this, LevelName);
+	return true;
+}
+
+bool UTimeLoopGameInstance::AsyncOpenMainMenu()
+{
+	if (!MainMenuMapName.IsNone())
+	{
+		return AsyncOpenLevelByName(MainMenuMapName);
+	}
+
+	UE_LOG(LogTemp, Warning, TEXT("TimeLoopGameInstance: MainMenuMapName is not set!"));
+	return false;
+}
+
+bool UTimeLoopGameInstance::AsyncOpenGameplayLevel()
+{
+	if (!GameplayMapName.IsNone())
+	{
+		return AsyncOpenLevelByName(GameplayMapName);
+	}
+
+	UE_LOG(LogTemp, Warning, TEXT("TimeLoopGameInstance: GameplayMapName is not set!"));
+	return false;
+}
+
+bool UTimeLoopGameInstance::AsyncOpenLevelByName(const FName LevelName)
+{
+	if (LevelName.IsNone())
+	{
+		UE_LOG(LogTemp, Warning, TEXT("TimeLoopGameInstance::AsyncOpenLevelByName: LevelName is None!"));
+		return false;
+	}
+
+	if (const UWorld* World = GetWorld(); !World)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("TimeLoopGameInstance::AsyncOpenLevelByName: World is null!"));
+		return false;
+	}
+
+	UE_LOG(LogTemp, Log, TEXT("TimeLoopGameInstance: Opening level %s asynchronously..."), *LevelName.ToString());
+
+	if (OnLevelTransitionRequested.IsBound())
+	{
+		OnLevelTransitionRequested.Broadcast(LevelName);
+	}
+
+	LoadPackageAsync(LevelDirectoryName.ToString() + LevelName.ToString(),
+		FLoadPackageAsyncDelegate::CreateLambda([this, LevelName](const FName& PackageName, UPackage* LoadedPackage, EAsyncLoadingResult::Type Result)
+		{
+			if (Result == EAsyncLoadingResult::Succeeded)
+			{
+				UE_LOG(LogTemp, Log, TEXT("TimeLoopGameInstance: Level %s loaded successfully. Opening level..."), *PackageName.ToString());
+				UGameplayStatics::OpenLevel(this, LevelName);
+			}
+			else
+			{
+				UE_LOG(LogTemp, Warning, TEXT("TimeLoopGameInstance: Failed to async load level %s!"), *PackageName.ToString());
+			}
+		}), 0, PKG_ContainsMap
+	);
+
+	return true;
 }
 
 void UTimeLoopGameInstance::IncrementLoopCount()

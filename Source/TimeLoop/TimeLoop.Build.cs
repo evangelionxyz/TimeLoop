@@ -7,7 +7,9 @@ public class TimeLoop : ModuleRules
 	public TimeLoop(ReadOnlyTargetRules Target) : base(Target)
 	{
 		PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
-	
+
+		IncludeOrderVersion = EngineIncludeOrderVersion.Latest;
+
 		PublicDependencyModuleNames.AddRange([
 			"Core",
 			"CoreUObject",
@@ -20,13 +22,13 @@ public class TimeLoop : ModuleRules
 
 		PublicIncludePaths.AddRange([
 			"TimeLoop",
-			"TimeLoop/Actor",
 			"TimeLoop/Components",
 			"TimeLoop/Core",
 			"TimeLoop/UI",
 		]);
 
 		PrivateDependencyModuleNames.AddRange(new string[] {  });
+
 
 		// Uncomment if you are using Slate UI
 		// PrivateDependencyModuleNames.AddRange(new string[] { "Slate", "SlateCore" });

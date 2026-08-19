@@ -200,22 +200,7 @@ void UFPSCameraEffects::ApplyVignette(const float DeltaTime)
 		const FVector2D PulseTargetSize = FMath::Lerp(VignettePulseMinSize, VignettePulseMaxSize, SineVal);
 		M_CurrentVignetteSize.X = FMath::FInterpTo(M_CurrentVignetteSize.X, PulseTargetSize.X, DeltaTime, VignetteInterpSpeed);
 		M_CurrentVignetteSize.Y = FMath::FInterpTo(M_CurrentVignetteSize.Y, PulseTargetSize.Y, DeltaTime, VignetteInterpSpeed);
-
-		// Was recovering
-		// bWasRecovering = true;
 	}
-	// else if (bWasRecovering)
-	// {
-	// 	// Interpolate back to Min Vignette Intensity
-	// 	M_VignetteRunningTime = 0.0f;
-	// 	M_CurrentVignetteIntensity = FMath::FInterpTo(M_CurrentVignetteIntensity, VignetteMinIntensity, DeltaTime, VignetteInterpSpeed);
-	// 	M_CurrentVignetteSize.X = FMath::FInterpTo(M_CurrentVignetteSize.X, TargetVignetteSize.X, DeltaTime, VignetteInterpSpeed);
-	// 	M_CurrentVignetteSize.Y = FMath::FInterpTo(M_CurrentVignetteSize.Y, TargetVignetteSize.Y, DeltaTime, VignetteInterpSpeed);
-	// 	if (M_CurrentVignetteIntensity <= VignetteMinIntensity + UE_KINDA_SMALL_NUMBER)
-	// 	{
-	// 		bWasRecovering = false;
-	// 	}
-	// }
 	else
 	{
 		M_VignetteRunningTime = 0.0f;

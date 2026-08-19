@@ -97,8 +97,6 @@ protected:
 	UPROPERTY(BlueprintReadWrite, Category = "Camera Effects|Vignette")
 	bool bIsRecovering = false;
 
-	bool bWasRecovering = false;
-
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Camera Effects|Vignette")
     bool bVignette = true;
 

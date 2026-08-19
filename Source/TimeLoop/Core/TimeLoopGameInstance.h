@@ -34,17 +34,34 @@ public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "TimeLoop|Maps")
 	FName GameplayMapName = FName(TEXT("Lvl_TheCollapse"));
 
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "TimeLoop|Maps")
+	FName LevelDirectoryName = FName(TEXT("/Game/Levels/"));
+
 	// Opens the Main Menu level
 	UFUNCTION(BlueprintCallable, Category = "TimeLoop|Game Flow")
-	void OpenMainMenu();
+	bool OpenMainMenu();
 
 	// Opens the Gameplay level and starts a new run
 	UFUNCTION(BlueprintCallable, Category = "TimeLoop|Game Flow")
-	void OpenGameplayLevel();
+	bool OpenGameplayLevel();
 
 	// Opens any level by FName, broadcasting level transition events
 	UFUNCTION(BlueprintCallable, Category = "TimeLoop|Game Flow")
-	void OpenLevelByName(FName LevelName);
+	bool OpenLevelByName(FName LevelName);
+
+	// --- Async Loader ---
+
+	// ASYNC - Opens the Main Menu level
+	UFUNCTION(BlueprintCallable, Category = "TimeLoop|Game Flow")
+	bool AsyncOpenMainMenu();
+
+	// ASYNC - Open any level and Start a new Run
+	UFUNCTION(BlueprintCallable, Category = "TimeLoop|Game Flow")
+	bool AsyncOpenGameplayLevel();
+
+	// ASYNC - Opens any level by FName, broadcasting level transition events
+	UFUNCTION(BlueprintCallable, Category = "TimeLoop|Game Flow")
+	bool AsyncOpenLevelByName(FName LevelName);
 
 	// --- Time Loop State ---
 
