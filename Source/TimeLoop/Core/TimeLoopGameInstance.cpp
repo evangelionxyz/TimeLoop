@@ -7,8 +7,6 @@
 
 UTimeLoopGameInstance::UTimeLoopGameInstance()
 {
-	MainMenuMapName = FName(TEXT("Lvl_MainMenu"));
-	GameplayMapName = FName(TEXT("Lvl_TheCollapse"));
 	CurrentLoopCount = 0;
 }
 
@@ -26,99 +24,112 @@ void UTimeLoopGameInstance::Shutdown()
 
 bool UTimeLoopGameInstance::OpenMainMenu()
 {
-	if (!MainMenuMapName.IsNone())
+	if (!MainMenuLevel.IsNull())
 	{
-		return OpenLevelByName(MainMenuMapName);
+		return OpenLevelByReference(MainMenuLevel);
 	}
 
-	UE_LOG(LogTemp, Warning, TEXT("TimeLoopGameInstance: MainMenuMapName is not set!"));
+	UE_LOG(LogTemp, Warning, TEXT("TimeLoopGameInstance: MainMenuLevel is not set!"));
 	return false;
 }
 
 bool UTimeLoopGameInstance::OpenGameplayLevel()
 {
-	if (!GameplayMapName.IsNone())
+	if (!GameplayLevel.IsNull())
 	{
-		return OpenLevelByName(GameplayMapName);
+		return OpenLevelByReference(GameplayLevel);
 	}
 
-	UE_LOG(LogTemp, Warning, TEXT("TimeLoopGameInstance: GameplayMapName is not set!"));
+	UE_LOG(LogTemp, Warning, TEXT("TimeLoopGameInstance: GameplayLevel is not set!"));
 	return false;
 }
 
-bool UTimeLoopGameInstance::OpenLevelByName(const FName LevelName)
+bool UTimeLoopGameInstance::OpenLevelByReference(const TSoftObjectPtr<UWorld> Level)
 {
-	if (LevelName.IsNone())
+	if (Level.IsNull())
 	{
-		UE_LOG(LogTemp, Warning, TEXT("TimeLoopGameInstance::OpenLevelByName: LevelName is None!"));
+		UE_LOG(LogTemp, Warning, TEXT("TimeLoopGameInstance::OpenLevelByReference: Level is null!"));
 		return false;
 	}
 
-	UE_LOG(LogTemp, Log, TEXT("TimeLoopGameInstance: Opening level %s..."), *LevelName.ToString());
+	const FSoftObjectPath LevelPath = Level.ToSoftObjectPath();
+	const FName TargetLevelName(*LevelPath.GetAssetName());
+
+	UE_LOG(LogTemp, Log, TEXT("TimeLoopGameInstance: Opening level %s..."), *LevelPath.ToString());
 	
 	if (OnLevelTransitionRequested.IsBound())
 	{
-		OnLevelTransitionRequested.Broadcast(LevelName);
+		OnLevelTransitionRequested.Broadcast(TargetLevelName);
 	}
 
-	UGameplayStatics::OpenLevel(this, LevelName);
+	UGameplayStatics::OpenLevelBySoftObjectPtr(this, Level);
 	return true;
 }
 
 bool UTimeLoopGameInstance::AsyncOpenMainMenu()
 {
-	if (!MainMenuMapName.IsNone())
+	if (!MainMenuLevel.IsNull())
 	{
-		return AsyncOpenLevelByName(MainMenuMapName);
+		return AsyncOpenLevelByReference(MainMenuLevel);
 	}
 
-	UE_LOG(LogTemp, Warning, TEXT("TimeLoopGameInstance: MainMenuMapName is not set!"));
+	UE_LOG(LogTemp, Warning, TEXT("TimeLoopGameInstance: MainMenuLevel is not set!"));
 	return false;
 }
 
 bool UTimeLoopGameInstance::AsyncOpenGameplayLevel()
 {
-	if (!GameplayMapName.IsNone())
+	if (!GameplayLevel.IsNull())
 	{
-		return AsyncOpenLevelByName(GameplayMapName);
+		return AsyncOpenLevelByReference(GameplayLevel);
 	}
 
-	UE_LOG(LogTemp, Warning, TEXT("TimeLoopGameInstance: GameplayMapName is not set!"));
+	UE_LOG(LogTemp, Warning, TEXT("TimeLoopGameInstance: GameplayLevel is not set!"));
 	return false;
 }
 
-bool UTimeLoopGameInstance::AsyncOpenLevelByName(const FName LevelName)
+bool UTimeLoopGameInstance::AsyncOpenLevelByReference(const TSoftObjectPtr<UWorld> Level)
 {
-	if (LevelName.IsNone())
+	if (Level.IsNull())
 	{
-		UE_LOG(LogTemp, Warning, TEXT("TimeLoopGameInstance::AsyncOpenLevelByName: LevelName is None!"));
+		UE_LOG(LogTemp, Warning, TEXT("TimeLoopGameInstance::AsyncOpenLevelByReference: Level is null!"));
 		return false;
 	}
 
 	if (const UWorld* World = GetWorld(); !World)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("TimeLoopGameInstance::AsyncOpenLevelByName: World is null!"));
+		UE_LOG(LogTemp, Warning, TEXT("TimeLoopGameInstance::AsyncOpenLevelByReference: World is null!"));
 		return false;
 	}
 
-	UE_LOG(LogTemp, Log, TEXT("TimeLoopGameInstance: Opening level %s asynchronously..."), *LevelName.ToString());
+	const FSoftObjectPath LevelPath = Level.ToSoftObjectPath();
+	const FName TargetLevelName(*LevelPath.GetAssetName());
+	const FString PackageName = LevelPath.GetLongPackageName();
+
+	if (PackageName.IsEmpty())
+	{
+		UE_LOG(LogTemp, Warning, TEXT("TimeLoopGameInstance::AsyncOpenLevelByReference: Invalid level path '%s'"), *LevelPath.ToString());
+		return false;
+	}
+
+	UE_LOG(LogTemp, Log, TEXT("TimeLoopGameInstance: Opening level %s asynchronously..."), *LevelPath.ToString());
 
 	if (OnLevelTransitionRequested.IsBound())
 	{
-		OnLevelTransitionRequested.Broadcast(LevelName);
+		OnLevelTransitionRequested.Broadcast(TargetLevelName);
 	}
 
-	LoadPackageAsync(LevelDirectoryName.ToString() + LevelName.ToString(),
-		FLoadPackageAsyncDelegate::CreateLambda([this, LevelName](const FName& PackageName, UPackage* LoadedPackage, EAsyncLoadingResult::Type Result)
+	LoadPackageAsync(PackageName,
+		FLoadPackageAsyncDelegate::CreateLambda([this, Level, TargetLevelName](const FName& LoadedPackageName, UPackage* LoadedPackage, EAsyncLoadingResult::Type Result)
 		{
 			if (Result == EAsyncLoadingResult::Succeeded)
 			{
-				UE_LOG(LogTemp, Log, TEXT("TimeLoopGameInstance: Level %s loaded successfully. Opening level..."), *PackageName.ToString());
-				UGameplayStatics::OpenLevel(this, LevelName);
+				UE_LOG(LogTemp, Log, TEXT("TimeLoopGameInstance: Level %s loaded successfully. Opening level..."), *LoadedPackageName.ToString());
+				UGameplayStatics::OpenLevelBySoftObjectPtr(this, Level);
 			}
 			else
 			{
-				UE_LOG(LogTemp, Warning, TEXT("TimeLoopGameInstance: Failed to async load level %s!"), *PackageName.ToString());
+				UE_LOG(LogTemp, Warning, TEXT("TimeLoopGameInstance: Failed to async load level %s!"), *TargetLevelName.ToString());
 			}
 		}), 0, PKG_ContainsMap
 	);

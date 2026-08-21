@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "Engine/GameInstance.h"
+#include "Engine/World.h"
 #include "TimeLoopGameInstance.generated.h"
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnLoopCountChanged, int32, NewLoopCount);
@@ -26,16 +27,13 @@ public:
 
 	// --- Level Navigation ---
 
-	// Map name or path for the Main Menu level (default: Lvl_MainMenu)
+	// Level reference for the Main Menu map
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "TimeLoop|Maps")
-	FName MainMenuMapName = FName(TEXT("Lvl_MainMenu"));
+	TSoftObjectPtr<UWorld> MainMenuLevel;
 
-	// Map name or path for the primary Gameplay level (default: Lvl_TheCollapse)
+	// Level reference for the primary Gameplay map
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "TimeLoop|Maps")
-	FName GameplayMapName = FName(TEXT("Lvl_TheCollapse"));
-
-	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "TimeLoop|Maps")
-	FName LevelDirectoryName = FName(TEXT("/Game/Levels/"));
+	TSoftObjectPtr<UWorld> GameplayLevel;
 
 	// Opens the Main Menu level
 	UFUNCTION(BlueprintCallable, Category = "TimeLoop|Game Flow")
@@ -45,9 +43,9 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "TimeLoop|Game Flow")
 	bool OpenGameplayLevel();
 
-	// Opens any level by FName, broadcasting level transition events
+	// Opens any level by object reference, broadcasting level transition events
 	UFUNCTION(BlueprintCallable, Category = "TimeLoop|Game Flow")
-	bool OpenLevelByName(FName LevelName);
+	bool OpenLevelByReference(TSoftObjectPtr<UWorld> Level);
 
 	// --- Async Loader ---
 
@@ -59,9 +57,9 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "TimeLoop|Game Flow")
 	bool AsyncOpenGameplayLevel();
 
-	// ASYNC - Opens any level by FName, broadcasting level transition events
+	// ASYNC - Opens any level by object reference, broadcasting level transition events
 	UFUNCTION(BlueprintCallable, Category = "TimeLoop|Game Flow")
-	bool AsyncOpenLevelByName(FName LevelName);
+	bool AsyncOpenLevelByReference(TSoftObjectPtr<UWorld> Level);
 
 	// --- Time Loop State ---
 
