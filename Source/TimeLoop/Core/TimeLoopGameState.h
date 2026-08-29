@@ -4,10 +4,130 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/GameState.h"
+#include "TimeLoopSaveGame.h"
 #include "TimeLoopGameState.generated.h"
 
+class UTimeLoopGameInstance;
+
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnGameStateLoopCountChanged, int32, NewLoopCount);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnObjectiveStateChanged, bool, bSolved);
+
+// ATimeLoopGameState
+// Match/Level-specific GameState authority managing per-level loop counts,
+// puzzle/objective completion status, and synchronization with the persistent GameInstance.
 UCLASS()
-class TIMELOOP_API ATimeLoopGameState : public AGameState {
+class TIMELOOP_API ATimeLoopGameState : public AGameState
+{
 	GENERATED_BODY()
 
+public:
+	ATimeLoopGameState();
+
+	virtual void BeginPlay() override;
+
+	// --- Level State ---
+
+	// The identifier/name of the current level managed by this GameState
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "TimeLoop|GameState")
+	FName LevelName;
+
+	// Current loop count for this level
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "TimeLoop|GameState")
+	int32 CurrentLevelLoopCount = 0;
+
+	// Whether the current level's objective (e.g. child saved, sniper blocked) is solved
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "TimeLoop|GameState")
+	bool bObjectiveSolved = false;
+
+	// Whether the current level is marked completed
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "TimeLoop|GameState")
+	bool bLevelCompleted = false;
+
+	// --- Initialization & Sync ---
+
+	// Initializes the GameState for a specific level name and syncs with GameInstance
+	UFUNCTION(BlueprintCallable, Category = "TimeLoop|GameState")
+	void InitializeForLevel(FName InLevelName);
+
+	// Synchronizes local state with persistent GameInstance
+	UFUNCTION(BlueprintCallable, Category = "TimeLoop|GameState")
+	void SyncWithGameInstance();
+
+	// --- Loop Counter Operations ---
+
+	// Returns the loop count for this level
+	UFUNCTION(BlueprintPure, Category = "TimeLoop|GameState")
+	int32 GetLoopCount() const { return CurrentLevelLoopCount; }
+
+	// Increments the loop count for this level and updates GameInstance
+	UFUNCTION(BlueprintCallable, Category = "TimeLoop|GameState")
+	void IncrementLoopCount();
+
+	// Resets the loop count for this level to 0 and updates GameInstance
+	UFUNCTION(BlueprintCallable, Category = "TimeLoop|GameState")
+	void ResetLoopCount();
+
+	// --- Objective & Level Completion ---
+
+	// Returns true if the objective is solved
+	UFUNCTION(BlueprintPure, Category = "TimeLoop|GameState")
+	bool IsObjectiveSolved() const { return bObjectiveSolved; }
+
+	// Sets the objective solved state and notifies GameInstance
+	UFUNCTION(BlueprintCallable, Category = "TimeLoop|GameState")
+	void SetObjectiveSolved(bool bSolved = true);
+
+	// Returns true if the level is completed
+	UFUNCTION(BlueprintPure, Category = "TimeLoop|GameState")
+	bool IsLevelCompleted() const { return bLevelCompleted; }
+
+	// Sets the level completed state and notifies GameInstance
+	UFUNCTION(BlueprintCallable, Category = "TimeLoop|GameState")
+	void SetLevelCompleted(bool bCompleted = true);
+
+	// Retrieves the full level data structure from GameInstance
+	UFUNCTION(BlueprintPure, Category = "TimeLoop|GameState")
+	FTimeLoopLevelData GetLevelData() const;
+
+	// --- Persistent Clues ---
+
+	// Adds a persistent clue discovered during the loop
+	UFUNCTION(BlueprintCallable, Category = "TimeLoop|GameState")
+	void AddPersistentClue(FName ClueID);
+
+	// Checks if a persistent clue has been discovered
+	UFUNCTION(BlueprintPure, Category = "TimeLoop|GameState")
+	bool HasPersistentClue(FName ClueID) const;
+
+	// --- Save / Load Shortcuts ---
+
+	// Saves the current game state via GameInstance
+	UFUNCTION(BlueprintCallable, Category = "TimeLoop|GameState")
+	bool SaveCurrentGameState(const FString& SlotName = TEXT(""), int32 UserIndex = -1);
+
+	// Loads the game state via GameInstance and refreshes GameState
+	UFUNCTION(BlueprintCallable, Category = "TimeLoop|GameState")
+	bool LoadCurrentGameState(const FString& SlotName = TEXT(""), int32 UserIndex = -1);
+
+	// --- Event Delegates ---
+
+	// Broadcast when the loop count for this level changes
+	UPROPERTY(BlueprintAssignable, Category = "TimeLoop|GameState|Events")
+	FOnGameStateLoopCountChanged OnLoopCountChanged;
+
+	// Broadcast when the objective solved state changes
+	UPROPERTY(BlueprintAssignable, Category = "TimeLoop|GameState|Events")
+	FOnObjectiveStateChanged OnObjectiveSolvedChanged;
+
+protected:
+	// Helper to get typed GameInstance
+	UTimeLoopGameInstance* GetTimeLoopGameInstance() const;
+
+	// Handler for GameInstance loop count changes
+	UFUNCTION()
+	void HandleGameInstanceLoopCountChanged(FName ChangedLevelName, int32 NewLoopCount);
+
+	// Handler for GameInstance objective solved changes
+	UFUNCTION()
+	void HandleGameInstanceObjectiveSolvedChanged(FName ChangedLevelName, bool bSolved);
 };
