@@ -84,6 +84,23 @@ TArray<FString> USettingsMenuWidget::GetScreenModeOptions() const
 	};
 }
 
+bool USettingsMenuWidget::IsVSyncEnabled() const
+{
+	if (CachedSettings)
+	{
+		return CachedSettings->IsVSyncEnabled();
+	}
+	return false;
+}
+
+void USettingsMenuWidget::SetVSyncEnabled(bool bEnabled)
+{
+	if (CachedSettings)
+	{
+		CachedSettings->SetVSyncEnabled(bEnabled);
+	}
+}
+
 void USettingsMenuWidget::ApplySettings()
 {
 	if (!CachedSettings)

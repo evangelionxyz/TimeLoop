@@ -55,6 +55,16 @@ public:
 	UFUNCTION(BlueprintPure, Category = "TimeLoop|Settings")
 	TArray<FString> GetScreenModeOptions() const;
 
+	// --- V-Sync ---
+
+	// Cek apakah V-Sync lagi nyala atau nggak
+	UFUNCTION(BlueprintPure, Category = "TimeLoop|Settings")
+	bool IsVSyncEnabled() const;
+
+	// Nyalain/matiin V-Sync (belum langsung ke-apply, harus panggil ApplySettings dulu)
+	UFUNCTION(BlueprintCallable, Category = "TimeLoop|Settings")
+	void SetVSyncEnabled(bool bEnabled);
+
 	// --- Apply & Revert ---
 
 	// Simpan & apply semua perubahan settings. Panggil ini pas user klik tombol "Apply".
