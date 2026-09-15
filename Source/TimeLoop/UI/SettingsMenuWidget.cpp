@@ -21,7 +21,7 @@ TArray<FIntPoint> USettingsMenuWidget::GetSupportedResolutions() const
 	UKismetSystemLibrary::GetSupportedFullscreenResolutions(Resolutions);
 
 	// Fallback kalau ternyata kosong (misal driver monitor lagi aneh), kasih beberapa resolusi umum
-	if (Resolutions.Num() == 0)
+	if (Resolutions.IsEmpty())
 	{
 		Resolutions = {
 			FIntPoint(1280, 720),
@@ -63,7 +63,7 @@ int32 USettingsMenuWidget::GetCurrentScreenModeIndex() const
 	{
 		return WindowModeToIndex(CachedSettings->GetFullscreenMode());
 	}
-	return 2; // default Windowed
+	return EWindowMode::Windowed;
 }
 
 void USettingsMenuWidget::SetScreenModeByIndex(int32 NewModeIndex)
