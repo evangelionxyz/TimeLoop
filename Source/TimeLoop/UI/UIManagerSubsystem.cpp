@@ -1,19 +1,18 @@
 // Copyright (c) 2026 Team Ficus
 
-#include "TimeLoopUIManagerSubsystem.h"
+#include "UIManagerSubsystem.h"
 #include "Blueprint/UserWidget.h"
 #include "GameFramework/PlayerController.h"
-#include "Kismet/GameplayStatics.h"
 
-void UTimeLoopUIManagerSubsystem::Initialize(FSubsystemCollectionBase& Collection)
+void UUIManagerSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
 	Super::Initialize(Collection);
 
-	PostLoadMapHandle = FCoreUObjectDelegates::PostLoadMapWithWorld.AddUObject(this, &UTimeLoopUIManagerSubsystem::HandlePostLoadMap);
+	PostLoadMapHandle = FCoreUObjectDelegates::PostLoadMapWithWorld.AddUObject(this, &UUIManagerSubsystem::HandlePostLoadMap);
 	UE_LOG(LogTemp, Log, TEXT("TimeLoopUIManagerSubsystem initialized."));
 }
 
-void UTimeLoopUIManagerSubsystem::Deinitialize()
+void UUIManagerSubsystem::Deinitialize()
 {
 	if (PostLoadMapHandle.IsValid())
 	{
@@ -26,7 +25,7 @@ void UTimeLoopUIManagerSubsystem::Deinitialize()
 	Super::Deinitialize();
 }
 
-UUserWidget* UTimeLoopUIManagerSubsystem::GetOrCreateWidget(TSubclassOf<UUserWidget> WidgetClass, APlayerController* OwningPlayer)
+UUserWidget* UUIManagerSubsystem::GetOrCreateWidget(TSubclassOf<UUserWidget> WidgetClass, APlayerController* OwningPlayer)
 {
 	if (!WidgetClass)
 	{
@@ -63,7 +62,7 @@ UUserWidget* UTimeLoopUIManagerSubsystem::GetOrCreateWidget(TSubclassOf<UUserWid
 	return NewWidget;
 }
 
-UUserWidget* UTimeLoopUIManagerSubsystem::ShowWidget(TSubclassOf<UUserWidget> WidgetClass, int32 ZOrder, APlayerController* OwningPlayer)
+UUserWidget* UUIManagerSubsystem::ShowWidget(TSubclassOf<UUserWidget> WidgetClass, int32 ZOrder, APlayerController* OwningPlayer)
 {
 	if (!WidgetClass)
 	{
@@ -91,7 +90,7 @@ UUserWidget* UTimeLoopUIManagerSubsystem::ShowWidget(TSubclassOf<UUserWidget> Wi
 	return Widget;
 }
 
-void UTimeLoopUIManagerSubsystem::HideWidget(TSubclassOf<UUserWidget> WidgetClass)
+void UUIManagerSubsystem::HideWidget(TSubclassOf<UUserWidget> WidgetClass)
 {
 	if (!WidgetClass)
 	{
@@ -116,7 +115,7 @@ void UTimeLoopUIManagerSubsystem::HideWidget(TSubclassOf<UUserWidget> WidgetClas
 	}
 }
 
-void UTimeLoopUIManagerSubsystem::RemoveWidget(TSubclassOf<UUserWidget> WidgetClass)
+void UUIManagerSubsystem::RemoveWidget(TSubclassOf<UUserWidget> WidgetClass)
 {
 	if (!WidgetClass)
 	{
@@ -142,7 +141,7 @@ void UTimeLoopUIManagerSubsystem::RemoveWidget(TSubclassOf<UUserWidget> WidgetCl
 	}
 }
 
-void UTimeLoopUIManagerSubsystem::ClearAllWidgets()
+void UUIManagerSubsystem::ClearAllWidgets()
 {
 	for (auto& Pair : CachedWidgets)
 	{
@@ -160,7 +159,7 @@ void UTimeLoopUIManagerSubsystem::ClearAllWidgets()
 	}
 }
 
-void UTimeLoopUIManagerSubsystem::SetInputModeUIOnly(APlayerController* PlayerController, UUserWidget* WidgetToFocus)
+void UUIManagerSubsystem::SetInputModeUIOnly(APlayerController* PlayerController, UUserWidget* WidgetToFocus)
 {
 	if (!PlayerController)
 	{
@@ -177,7 +176,7 @@ void UTimeLoopUIManagerSubsystem::SetInputModeUIOnly(APlayerController* PlayerCo
 	PlayerController->bShowMouseCursor = true;
 }
 
-void UTimeLoopUIManagerSubsystem::SetInputModeGameOnly(APlayerController* PlayerController)
+void UUIManagerSubsystem::SetInputModeGameOnly(APlayerController* PlayerController)
 {
 	if (!PlayerController)
 	{
@@ -189,7 +188,7 @@ void UTimeLoopUIManagerSubsystem::SetInputModeGameOnly(APlayerController* Player
 	PlayerController->bShowMouseCursor = false;
 }
 
-void UTimeLoopUIManagerSubsystem::SetInputModeGameAndUI(APlayerController* PlayerController, UUserWidget* WidgetToFocus)
+void UUIManagerSubsystem::SetInputModeGameAndUI(APlayerController* PlayerController, UUserWidget* WidgetToFocus)
 {
 	if (!PlayerController)
 	{
@@ -206,7 +205,7 @@ void UTimeLoopUIManagerSubsystem::SetInputModeGameAndUI(APlayerController* Playe
 	PlayerController->bShowMouseCursor = true;
 }
 
-void UTimeLoopUIManagerSubsystem::HandlePostLoadMap(UWorld* LoadedWorld)
+void UUIManagerSubsystem::HandlePostLoadMap(UWorld* LoadedWorld)
 {
 	UE_LOG(LogTemp, Log, TEXT("TimeLoopUIManagerSubsystem: Level loaded: %s"), LoadedWorld ? *LoadedWorld->GetName() : TEXT("Unknown"));
 	

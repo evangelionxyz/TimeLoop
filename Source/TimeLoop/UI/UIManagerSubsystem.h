@@ -5,7 +5,7 @@
 #include "CoreMinimal.h"
 #include "Subsystems/GameInstanceSubsystem.h"
 #include "Blueprint/UserWidget.h"
-#include "TimeLoopUIManagerSubsystem.generated.h"
+#include "UIManagerSubsystem.generated.h"
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnActiveWidgetChanged, UUserWidget*, NewActiveWidget);
 
@@ -13,7 +13,7 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnActiveWidgetChanged, UUserWidget*
 // Persistent GameInstance Subsystem responsible for managing UI lifecycle,
 // widget persistence across levels, input mode switching, and menu transitions.
 UCLASS()
-class TIMELOOP_API UTimeLoopUIManagerSubsystem : public UGameInstanceSubsystem
+class TIMELOOP_API UUIManagerSubsystem : public UGameInstanceSubsystem
 {
 	GENERATED_BODY()
 
