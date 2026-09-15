@@ -18,7 +18,7 @@ void UFPSCameraEffects::SetShakingParameters(const float NewFrequency, const flo
 
 void UFPSCameraEffects::SetLeaningParameters(const float NewTargetLeanAngle)
 {
-	M_TargetLeanAngle = NewTargetLeanAngle;
+	TargetLeanAngle = NewTargetLeanAngle;
 }
 
 void UFPSCameraEffects::SetFOV(float NewFov)
@@ -36,7 +36,6 @@ void UFPSCameraEffects::SetVignetteParameters(float MaxIntensity, float MinInten
 		TargetVignetteIntensity = MaxIntensity;
 		DefaultVignetteIntensity = MaxIntensity;
 		TargetVignetteSize = DefaultVignetteSize;
-		M_VignetteRunningTime = 0.0f;
 	}
 	else
 	{
@@ -81,7 +80,6 @@ void UFPSCameraEffects::SetRecovering(bool bNewRecovering)
 	bIsRecovering = bNewRecovering;
 	if (!bIsRecovering)
 	{
-		M_VignetteRunningTime = 0.0f;
 		TargetVignetteIntensity = DefaultVignetteIntensity;
 		VignetteMaxIntensity = DefaultVignetteIntensity;
 		VignetteMinIntensity = DefaultVignetteIntensity;
@@ -104,10 +102,16 @@ void UFPSCameraEffects::SetVignettePulse(bool bEnablePulse, float PulseFrequency
 	VignettePulseMaxSize = MaxSize;
 	if (!bEnablePulse)
 	{
-		M_VignetteRunningTime = 0.0f;
 		TargetVignetteIntensity = DefaultVignetteIntensity;
 		TargetVignetteSize = DefaultVignetteSize;
 	}
+}
+
+void UFPSCameraEffects::PlayEarthQuakeShake(float Duration, float Intensity)
+{
+	bEarthQuakeShaking = true;
+	EarthQuakeShakeDuration = Duration;
+	EarthQuakeShakeIntensity = Intensity;
 }
 
 void UFPSCameraEffects::BeginPlay()
@@ -115,59 +119,59 @@ void UFPSCameraEffects::BeginPlay()
 	Super::BeginPlay();
 	Camera = GetOwner()->FindComponentByClass<UCameraComponent>();
 
-	M_LeanAngle = 0.0f;
+	LeanAngle = 0.0f;
 
-	M_ShakingPitch = 0.0f;
-	M_ShakingRoll = 0.0f;
-	M_ShakingVerticalOffset = 0.0f;
-	M_ShakingRunningTime = 0.0f;
+	ShakingPitch = 0.0f;
+	ShakingRoll = 0.0f;
+	ShakingVerticalOffset = 0.0f;
 
-	M_VignetteRunningTime = 0.0f;
-	M_CurrentVignetteIntensity = DefaultVignetteIntensity;
+	CurrentVignetteIntensity = DefaultVignetteIntensity;
 	TargetVignetteIntensity = DefaultVignetteIntensity;
 	VignetteMaxIntensity = DefaultVignetteIntensity;
 	VignetteMinIntensity = DefaultVignetteIntensity;
 
-	M_CurrentVignetteSize = DefaultVignetteSize;
+	CurrentVignetteSize = DefaultVignetteSize;
 	TargetVignetteSize = DefaultVignetteSize;
 
 	if (Camera)
 	{
 		TargetFOV = Camera->FieldOfView;
 		Camera->PostProcessSettings.bOverride_VignetteIntensity = true;
-		Camera->PostProcessSettings.VignetteIntensity = M_CurrentVignetteIntensity;
+		Camera->PostProcessSettings.VignetteIntensity = CurrentVignetteIntensity;
 		Camera->PostProcessSettings.bOverride_VignetteSize = true;
-		Camera->PostProcessSettings.VignetteSize = FVector2f(M_CurrentVignetteSize.X, M_CurrentVignetteSize.Y);
+		Camera->PostProcessSettings.VignetteSize = FVector2f(CurrentVignetteSize.X, CurrentVignetteSize.Y);
 	}
 }
-
 void UFPSCameraEffects::PerformShaking(const float DeltaTime)
 {
-	if (!bShaking)
+	static float RunningTime = 0.0f;
+
+	if (!bShaking || bEarthQuakeShaking)
 	{
-		M_ShakingRunningTime = 0.0f;
+		RunningTime = 0.0f;
 		return;
 	}
 
-	M_ShakingRunningTime += ShakingFrequency * DeltaTime;
-	const float ShakingValue = M_ShakingRunningTime * ShakingFrequency;
+	RunningTime += ShakingFrequency * DeltaTime;
+	const float ShakingValue = RunningTime * ShakingFrequency;
 
-	M_ShakingPitch = FMath::Sin(ShakingValue) * PitchIntensity;
-	M_ShakingRoll = (FMath::Cos(ShakingValue) * 0.5f) * RollIntensity;
-	M_ShakingVerticalOffset = (FMath::Sin(ShakingValue) * 2.0f) * VerticalOffsetIntensity;
+	ShakingPitch = FMath::Sin(ShakingValue) * PitchIntensity;
+	ShakingRoll = (FMath::Cos(ShakingValue) * 0.5f) * RollIntensity;
+	ShakingVerticalOffset = (FMath::Sin(ShakingValue) * 2.0f) * VerticalOffsetIntensity;
 }
+
 
 void UFPSCameraEffects::PerformLeaning(const float DeltaTime)
 {
 	if (!bLeaning)
 	{
-		M_LeanAngle = 0.0f;
+		LeanAngle = 0.0f;
 		return;
 	}
 
-	M_LeanAngle = FMath::FInterpTo(
-		M_LeanAngle,
-		M_TargetLeanAngle * MaxLeanAngle,
+	LeanAngle = FMath::FInterpTo(
+		LeanAngle,
+		TargetLeanAngle * MaxLeanAngle,
 		DeltaTime,
 		LeanSpeed
 	);
@@ -178,41 +182,70 @@ void UFPSCameraEffects::ApplyVignette(const float DeltaTime)
 	if (!Camera)
 		return;
 
+	static float RunningTime = 0.0f;
+
 	if (!bVignette)
 	{
-		M_CurrentVignetteIntensity = FMath::FInterpTo(M_CurrentVignetteIntensity, 0.0f, DeltaTime, VignetteInterpSpeed);
+		RunningTime = 0.0f;
+		CurrentVignetteIntensity = FMath::FInterpTo(CurrentVignetteIntensity, 0.0f, DeltaTime, VignetteInterpSpeed);
 		Camera->PostProcessSettings.bOverride_VignetteIntensity = true;
-		Camera->PostProcessSettings.VignetteIntensity = M_CurrentVignetteIntensity;
+		Camera->PostProcessSettings.VignetteIntensity = CurrentVignetteIntensity;
+
 		return;
 	}
 
 	// Animating the Recovering Heartbeat Pulse
 	if (bIsRecovering || (VignetteMaxIntensity > VignetteMinIntensity + UE_KINDA_SMALL_NUMBER))
 	{
-		M_VignetteRunningTime += DeltaTime * VignettePulseFrequency;
-		const float SineVal = (FMath::Sin(M_VignetteRunningTime) + 1.0f) * 0.5f; // [0.0, 1.0]
+		RunningTime += DeltaTime * VignettePulseFrequency;
+		const float SineVal = (FMath::Sin(RunningTime) + 1.0f) * 0.5f; // [0.0, 1.0]
 
 		// Animate Vignette Intensity
 		const float PulseTargetIntensity = FMath::Lerp(VignetteMinIntensity, VignetteMaxIntensity, SineVal);
-		M_CurrentVignetteIntensity = FMath::FInterpTo(M_CurrentVignetteIntensity, PulseTargetIntensity, DeltaTime, VignetteInterpSpeed);
+		CurrentVignetteIntensity = FMath::FInterpTo(CurrentVignetteIntensity, PulseTargetIntensity, DeltaTime, VignetteInterpSpeed);
 
 		// Animate Vignette Size to give the recovery breathing / heartbeat feeling
 		const FVector2D PulseTargetSize = FMath::Lerp(VignettePulseMinSize, VignettePulseMaxSize, SineVal);
-		M_CurrentVignetteSize.X = FMath::FInterpTo(M_CurrentVignetteSize.X, PulseTargetSize.X, DeltaTime, VignetteInterpSpeed);
-		M_CurrentVignetteSize.Y = FMath::FInterpTo(M_CurrentVignetteSize.Y, PulseTargetSize.Y, DeltaTime, VignetteInterpSpeed);
+		CurrentVignetteSize.X = FMath::FInterpTo(CurrentVignetteSize.X, PulseTargetSize.X, DeltaTime, VignetteInterpSpeed);
+		CurrentVignetteSize.Y = FMath::FInterpTo(CurrentVignetteSize.Y, PulseTargetSize.Y, DeltaTime, VignetteInterpSpeed);
 	}
 	else
 	{
-		M_VignetteRunningTime = 0.0f;
-		M_CurrentVignetteIntensity = FMath::FInterpTo(M_CurrentVignetteIntensity, TargetVignetteIntensity, DeltaTime, VignetteInterpSpeed);
-		M_CurrentVignetteSize.X = FMath::FInterpTo(M_CurrentVignetteSize.X, TargetVignetteSize.X, DeltaTime, VignetteInterpSpeed);
-		M_CurrentVignetteSize.Y = FMath::FInterpTo(M_CurrentVignetteSize.Y, TargetVignetteSize.Y, DeltaTime, VignetteInterpSpeed);
+		RunningTime = 0.0f;
+		CurrentVignetteIntensity = FMath::FInterpTo(CurrentVignetteIntensity, TargetVignetteIntensity, DeltaTime, VignetteInterpSpeed);
+		CurrentVignetteSize.X = FMath::FInterpTo(CurrentVignetteSize.X, TargetVignetteSize.X, DeltaTime, VignetteInterpSpeed);
+		CurrentVignetteSize.Y = FMath::FInterpTo(CurrentVignetteSize.Y, TargetVignetteSize.Y, DeltaTime, VignetteInterpSpeed);
 	}
 
 	Camera->PostProcessSettings.bOverride_VignetteIntensity = true;
-	Camera->PostProcessSettings.VignetteIntensity = M_CurrentVignetteIntensity;
+	Camera->PostProcessSettings.VignetteIntensity = CurrentVignetteIntensity;
 	Camera->PostProcessSettings.bOverride_VignetteSize = true;
-	Camera->PostProcessSettings.VignetteSize = FVector2f(M_CurrentVignetteSize.X, M_CurrentVignetteSize.Y);
+	Camera->PostProcessSettings.VignetteSize = FVector2f(CurrentVignetteSize.X, CurrentVignetteSize.Y);
+}
+
+void UFPSCameraEffects::PerformEarthQuakeShaking(float DeltaTime)
+{
+	static float RunningTime = 0.0f;
+
+	if (!bEarthQuakeShaking)
+	{
+		RunningTime = 0.0f;
+		return;
+	}
+
+	RunningTime += ShakingFrequency * DeltaTime;
+	const float ShakingValue = RunningTime * ShakingFrequency;
+
+	EarthQuakeShakeDuration -= DeltaTime;
+	if (EarthQuakeShakeDuration <= 0.0f)
+	{
+		bEarthQuakeShaking = false;
+		EarthQuakeShakeDuration = 0.0f;
+	}
+
+	ShakingPitch = FMath::Sin(ShakingValue) * PitchIntensity * EarthQuakeShakeIntensity;
+	ShakingRoll = (FMath::Cos(ShakingValue) * 0.5f) * RollIntensity * EarthQuakeShakeIntensity;
+	ShakingVerticalOffset = (FMath::Sin(ShakingValue) * 2.0f) * VerticalOffsetIntensity * EarthQuakeShakeIntensity;
 }
 
 // Called every frame
@@ -226,10 +259,12 @@ void UFPSCameraEffects::TickComponent(const float DeltaTime, ELevelTick TickType
 	PerformShaking(DeltaTime);
 	PerformLeaning(DeltaTime);
 	ApplyVignette(DeltaTime);
+	PerformEarthQuakeShaking(DeltaTime);
 
 	Camera->SetRelativeLocationAndRotation(
-		FVector(0.0f, 0.0f, M_ShakingVerticalOffset),
-		FRotator(M_ShakingPitch, 0.0f, M_ShakingRoll + M_LeanAngle) // Added Lean angle to the Shaking Roll
+		FVector(0.0f, 0.0f, ShakingVerticalOffset),
+		FRotator(ShakingPitch, 0.0f, ShakingRoll + LeanAngle) // Added Lean angle to the Shaking Roll
 	);
+	
 	Camera->FieldOfView = FMath::FInterpTo(Camera->FieldOfView, TargetFOV, DeltaTime, FOVChangeSpeed);
 }

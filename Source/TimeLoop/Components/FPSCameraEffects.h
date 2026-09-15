@@ -50,6 +50,10 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Camera Effects|Vignette")
 	void SetVignettePulse(bool bEnablePulse, float PulseFrequency = 6.0f, float MinIntensity = 0.2f, float MaxIntensity = 1.2f, FVector2D MinSize = FVector2D(6.0f, 6.0f), FVector2D MaxSize = FVector2D(14.0f, 14.0f));
 
+
+	UFUNCTION(BlueprintCallable, Category = "Play")
+	void PlayEarthQuakeShake(float Duration, float Intensity);
+
 protected:
 	virtual void BeginPlay() override;
 
@@ -112,8 +116,8 @@ protected:
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Camera Effects|Leaning")
 	float LeanSpeed = 3.0f;
 
-	float M_TargetLeanAngle = 0.0f;
-	float M_LeanAngle = 0.0f;
+	float TargetLeanAngle = 0.0f;
+	float LeanAngle = 0.0f;
 
 	// Shaking Properties
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Camera Effects|Shaking")
@@ -125,20 +129,23 @@ protected:
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Camera Effects|Shaking")
 	float VerticalOffsetIntensity = 2.3f;
 
-	float M_ShakingPitch = 0.0f;
-	float M_ShakingRoll = 0.0f;
-	float M_ShakingVerticalOffset = 0.0f;
-	float M_ShakingRunningTime = 0.0f;
+	float ShakingPitch = 0.0f;
+	float ShakingRoll = 0.0f;
+	float ShakingVerticalOffset = 0.0f;
 
-	float M_VignetteRunningTime = 0.0f;
-	float M_CurrentVignetteIntensity = 0.4f;
+	float CurrentVignetteIntensity = 0.4f;
 	float TargetVignetteIntensity = 0.4f;
 
-	FVector2D M_CurrentVignetteSize = FVector2D(10.0f, 10.0f);
+	bool bEarthQuakeShaking = false;
+	float EarthQuakeShakeDuration = 0.0f;
+	float EarthQuakeShakeIntensity = 0.0f;
+
+	FVector2D CurrentVignetteSize = FVector2D(10.0f, 10.0f);
 	FVector2D TargetVignetteSize = FVector2D(10.0f, 10.0f);
 
 private:
 	void PerformShaking(float DeltaTime);
 	void PerformLeaning(float DeltaTime);
 	void ApplyVignette(float DeltaTime);
+	void PerformEarthQuakeShaking(float DeltaTime);
 };
