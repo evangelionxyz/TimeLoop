@@ -11,6 +11,15 @@
 // biar WBP bisa nampilin notifikasi semacam "Settings Applied" kalau perlu.
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnSettingsApplied);
 
+UENUM()
+enum ETimeLoopScalabilityLevel : int
+{
+	Low = 0,
+	Medium,
+	High,
+	Epic,
+};
+
 // USettingsMenuWidget
 // C++ base class untuk menu Settings.
 // Semua logic resolution & screen mode ditaruh di sini, jadi WBP_SettingsMenu
@@ -21,13 +30,24 @@ class TIMELOOP_API USettingsMenuWidget : public UUserWidget
 	GENERATED_BODY()
 
 public:
-	virtual void NativeConstruct() override;
-
-	// --- Resolution ---
-
-	// Ambil semua resolusi layar yang didukung monitor, buat diisi ke ComboBox resolution
 	UFUNCTION(BlueprintCallable, Category = "TimeLoop|Settings")
-	TArray<FIntPoint> GetSupportedResolutions() const;
+	void PopulateSettings();
+
+public:
+
+	// -1: Custom
+	// Scalability
+	UFUNCTION(BlueprintPure, Category = "TimeLoop|Settings")
+	ETimeLoopScalabilityLevel GetCurrentScalabilityLevel() const;
+
+	UFUNCTION(BlueprintCallable, Category = "TimeLoop|Settings")
+	void SetScalabilityLevel(ETimeLoopScalabilityLevel NewScalabilityLevel);
+
+	UFUNCTION(BlueprintCallable, Category = "TimeLoop|Settings")
+	void CycleScalabilityLevel(const bool bIncrement);
+
+	UFUNCTION(BlueprintPure, Category = "TimeLoop|Settings")
+	FString GetCurrentScalabilityLevelLabel() const;
 
 	// Ambil resolusi yang lagi dipakai sekarang
 	UFUNCTION(BlueprintPure, Category = "TimeLoop|Settings")
@@ -35,27 +55,24 @@ public:
 
 	// Ubah resolusi (belum langsung ke-apply, harus panggil ApplySettings dulu)
 	UFUNCTION(BlueprintCallable, Category = "TimeLoop|Settings")
-	void SetResolution(FIntPoint NewResolution);
+	void SetResolution(FIntPoint NewResolution) const;
 
-	// Helper buat nge-convert FIntPoint jadi text "1920 x 1080", biar gampang ditampilin di ComboBox
 	UFUNCTION(BlueprintPure, Category = "TimeLoop|Settings")
-	FString ResolutionToText(FIntPoint Resolution) const;
+	FString GetCurrentResolutionLabel() const;
 
-	// --- Screen Mode ---
+	UFUNCTION(BlueprintCallable, Category = "TimeLoop|Settings")
+	void CycleResolution(const bool bIncrement);
 
 	// Index screen mode yang lagi aktif sekarang (0 = Fullscreen, 1 = Windowed Fullscreen, 2 = Windowed)
 	UFUNCTION(BlueprintPure, Category = "TimeLoop|Settings")
-	int32 GetCurrentScreenModeIndex() const;
+	EWindowMode::Type GetCurrentWindowMode() const;
 
-	// Ganti screen mode pakai index (0 = Fullscreen, 1 = Windowed Fullscreen, 2 = Windowed)
 	UFUNCTION(BlueprintCallable, Category = "TimeLoop|Settings")
-	void SetScreenModeByIndex(int32 NewModeIndex);
+	void CycleWindowMode(const bool bIncrement);
 
 	// List nama screen mode, urutannya harus sama kayak index di atas. Diisi ke ComboBox/Dropdown di WBP.
 	UFUNCTION(BlueprintPure, Category = "TimeLoop|Settings")
-	TArray<FString> GetScreenModeOptions() const;
-
-	// --- V-Sync ---
+	FString GetCurrentWindowModeLabel() const;
 
 	// Cek apakah V-Sync lagi nyala atau nggak
 	UFUNCTION(BlueprintPure, Category = "TimeLoop|Settings")
@@ -63,9 +80,10 @@ public:
 
 	// Nyalain/matiin V-Sync (belum langsung ke-apply, harus panggil ApplySettings dulu)
 	UFUNCTION(BlueprintCallable, Category = "TimeLoop|Settings")
-	void SetVSyncEnabled(bool bEnabled);
+	void SetVSyncEnabled(bool bEnabled) const;
 
-	// --- Apply & Revert ---
+	UFUNCTION(BlueprintPure, Category = "TimeLoop|Settings")
+	FString GetCurrentVSyncLabel() const;
 
 	// Simpan & apply semua perubahan settings. Panggil ini pas user klik tombol "Apply".
 	UFUNCTION(BlueprintCallable, Category = "TimeLoop|Settings")
@@ -85,7 +103,5 @@ protected:
 	UPROPERTY(Transient)
 	TObjectPtr<UGameUserSettings> CachedSettings;
 
-	// Helper convert index dropdown <-> EWindowMode
-	static EWindowMode::Type IndexToWindowMode(int32 Index);
-	static int32 WindowModeToIndex(EWindowMode::Type Mode);
+	TArray<FIntPoint> Resolutions;
 };

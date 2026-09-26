@@ -3,115 +3,122 @@
 #include "SettingsMenuWidget.h"
 #include "Kismet/KismetSystemLibrary.h"
 
-void USettingsMenuWidget::NativeConstruct()
+void USettingsMenuWidget::PopulateSettings()
 {
-	Super::NativeConstruct();
-
 	// Ambil instance GameUserSettings sekali aja pas widget ini dibuat
 	// (GetGameUserSettings ada di class UGameUserSettings itu sendiri, bukan UGameplayStatics)
 	CachedSettings = UGameUserSettings::GetGameUserSettings();
-}
+	CachedSettings->LoadSettings(false);
 
-TArray<FIntPoint> USettingsMenuWidget::GetSupportedResolutions() const
-{
-	TArray<FIntPoint> Resolutions;
-
-	// Ambil daftar resolusi fullscreen yang didukung monitor
-	// (fungsi ini ada di UKismetSystemLibrary, bukan UGameUserSettings)
-	UKismetSystemLibrary::GetSupportedFullscreenResolutions(Resolutions);
-
-	// Fallback kalau ternyata kosong (misal driver monitor lagi aneh), kasih beberapa resolusi umum
-	if (Resolutions.IsEmpty())
+	// Populate supported resolutions
+	if (!UKismetSystemLibrary::GetSupportedFullscreenResolutions(Resolutions))
 	{
-		Resolutions = {
+		Resolutions =
+		{
 			FIntPoint(1280, 720),
 			FIntPoint(1366, 768),
 			FIntPoint(1600, 900),
 			FIntPoint(1920, 1080),
 			FIntPoint(2560, 1440),
+			FIntPoint(3840, 2160),
 		};
 	}
+}
+ETimeLoopScalabilityLevel USettingsMenuWidget::GetCurrentScalabilityLevel() const
+{
+	return static_cast<ETimeLoopScalabilityLevel>(CachedSettings->GetOverallScalabilityLevel());
+}
 
-	return Resolutions;
+void USettingsMenuWidget::SetScalabilityLevel(ETimeLoopScalabilityLevel NewScalabilityLevel)
+{
+	// -1: Custom
+	CachedSettings->SetOverallScalabilityLevel(NewScalabilityLevel);
+}
+
+void USettingsMenuWidget::CycleScalabilityLevel(const bool bIncrement)
+{
+	// -1: Custom
+	int32_t Scalability = CachedSettings->GetOverallScalabilityLevel();
+	Scalability = FMath::Clamp(bIncrement ? Scalability + 1 : Scalability - 1, 0, static_cast<int>(Epic));
+	CachedSettings->SetOverallScalabilityLevel(Scalability);
+}
+
+FString USettingsMenuWidget::GetCurrentScalabilityLevelLabel() const
+{
+	switch (static_cast<ETimeLoopScalabilityLevel>(CachedSettings->GetOverallScalabilityLevel()))
+	{
+		case Low: return TEXT("Low");
+		case Medium: return TEXT("Medium");
+		case High: return TEXT("High");
+		case Epic: return TEXT("Epic");
+		default: return TEXT("Custom");
+	}
 }
 
 FIntPoint USettingsMenuWidget::GetCurrentResolution() const
 {
-	if (CachedSettings)
-	{
-		return CachedSettings->GetScreenResolution();
-	}
-	return FIntPoint(1280, 720);
+	return CachedSettings->GetScreenResolution();
 }
 
-void USettingsMenuWidget::SetResolution(FIntPoint NewResolution)
+void USettingsMenuWidget::SetResolution(const FIntPoint NewResolution) const
 {
-	if (CachedSettings)
-	{
-		CachedSettings->SetScreenResolution(NewResolution);
-	}
+	CachedSettings->SetScreenResolution(NewResolution);
 }
 
-FString USettingsMenuWidget::ResolutionToText(FIntPoint Resolution) const
+FString USettingsMenuWidget::GetCurrentResolutionLabel() const
 {
+	const FIntPoint &Resolution = CachedSettings->GetScreenResolution();
 	return FString::Printf(TEXT("%d x %d"), Resolution.X, Resolution.Y);
 }
 
-int32 USettingsMenuWidget::GetCurrentScreenModeIndex() const
+void USettingsMenuWidget::CycleResolution(const bool bIncrement)
 {
-	if (CachedSettings)
-	{
-		return WindowModeToIndex(CachedSettings->GetFullscreenMode());
-	}
-	return EWindowMode::Windowed;
+	int CurrentResolutionIndex = Resolutions.Find(CachedSettings->GetScreenResolution());
+	CurrentResolutionIndex = FMath::Clamp(bIncrement ? CurrentResolutionIndex + 1 : CurrentResolutionIndex - 1, 0, Resolutions.Num() - 1);
+	CachedSettings->SetScreenResolution(Resolutions[CurrentResolutionIndex]);
 }
 
-void USettingsMenuWidget::SetScreenModeByIndex(int32 NewModeIndex)
+EWindowMode::Type USettingsMenuWidget::GetCurrentWindowMode() const
 {
-	if (CachedSettings)
-	{
-		CachedSettings->SetFullscreenMode(IndexToWindowMode(NewModeIndex));
-	}
+	return CachedSettings->GetFullscreenMode();
 }
 
-TArray<FString> USettingsMenuWidget::GetScreenModeOptions() const
+void USettingsMenuWidget::CycleWindowMode(const bool bIncrement)
 {
-	// Urutan di sini WAJIB sama persis kayak urutan di IndexToWindowMode / WindowModeToIndex
-	return {
-		TEXT("Fullscreen"),
-		TEXT("Windowed Fullscreen"),
-		TEXT("Windowed")
-	};
+	int CurrentScreenMode = CachedSettings->GetFullscreenMode();
+	CurrentScreenMode = FMath::Clamp(bIncrement ? CurrentScreenMode + 1 : CurrentScreenMode - 1, 0, static_cast<int32>(EWindowMode::Windowed));
+	CachedSettings->SetFullscreenMode(static_cast<EWindowMode::Type>(CurrentScreenMode));
+}
+
+FString USettingsMenuWidget::GetCurrentWindowModeLabel() const
+{
+	switch (CachedSettings->GetFullscreenMode())
+	{
+		case EWindowMode::Type::Fullscreen: return TEXT("Fullscreen");
+		case EWindowMode::Type::WindowedFullscreen: return TEXT("Windowed Fullscreen");
+		case EWindowMode::Type::Windowed: return TEXT("Windowed");
+		default: return TEXT("Unknown");
+	}
 }
 
 bool USettingsMenuWidget::IsVSyncEnabled() const
 {
-	if (CachedSettings)
-	{
-		return CachedSettings->IsVSyncEnabled();
-	}
-	return false;
+	return CachedSettings->IsVSyncEnabled();
 }
 
-void USettingsMenuWidget::SetVSyncEnabled(bool bEnabled)
+void USettingsMenuWidget::SetVSyncEnabled(const bool bEnabled) const
 {
-	if (CachedSettings)
-	{
-		CachedSettings->SetVSyncEnabled(bEnabled);
-	}
+	CachedSettings->SetVSyncEnabled(bEnabled);
+}
+
+FString USettingsMenuWidget::GetCurrentVSyncLabel() const
+{
+	return CachedSettings->IsVSyncEnabled() ? TEXT("ON") : TEXT("OFF");
 }
 
 void USettingsMenuWidget::ApplySettings()
 {
-	if (!CachedSettings)
-	{
-		return;
-	}
-
-	// ApplySettings nge-terapin perubahan resolution & screen mode ke window game-nya
 	CachedSettings->ApplySettings(false);
-
-	// SaveSettings nyimpen ke GameUserSettings.ini, biar kepake lagi pas game dibuka ulang
 	CachedSettings->SaveSettings();
 
 	if (OnSettingsApplied.IsBound())
@@ -124,31 +131,5 @@ void USettingsMenuWidget::ApplySettings()
 
 void USettingsMenuWidget::RevertSettings()
 {
-	if (CachedSettings)
-	{
-		// Load ulang dari GameUserSettings.ini, buang semua perubahan yang belum di-apply
-		CachedSettings->LoadSettings(true);
-	}
-}
-
-EWindowMode::Type USettingsMenuWidget::IndexToWindowMode(int32 Index)
-{
-	switch (Index)
-	{
-	case 0: return EWindowMode::Fullscreen;
-	case 1: return EWindowMode::WindowedFullscreen;
-	case 2: return EWindowMode::Windowed;
-	default: return EWindowMode::Windowed;
-	}
-}
-
-int32 USettingsMenuWidget::WindowModeToIndex(EWindowMode::Type Mode)
-{
-	switch (Mode)
-	{
-	case EWindowMode::Fullscreen: return 0;
-	case EWindowMode::WindowedFullscreen: return 1;
-	case EWindowMode::Windowed: return 2;
-	default: return 2;
-	}
+	CachedSettings->LoadSettings(true);
 }
