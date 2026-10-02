@@ -18,10 +18,6 @@ public:
 	UFlashlightEffects();
 
 protected:
-
-	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Spot Light")
-	USpotLightComponent *SpotLight;
-
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Spot Light")
 	USoundBase *SoundSwitchOn;
 
@@ -37,6 +33,4 @@ protected:
 public:	
 	// Called every frame
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
-
-		
 };

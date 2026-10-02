@@ -16,6 +16,7 @@ void UFlashlightEffects::BeginPlay()
 	SpotLight = GetOwner()->FindComponentByClass<USpotLightComponent>();
 	if (SpotLight)
 	{
+
 		SpotLight->SetVisibility(false);
 	}
 }
