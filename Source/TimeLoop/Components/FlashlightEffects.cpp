@@ -12,27 +12,10 @@ UFlashlightEffects::UFlashlightEffects()
 void UFlashlightEffects::BeginPlay()
 {
 	Super::BeginPlay();
-
-	SpotLight = GetOwner()->FindComponentByClass<USpotLightComponent>();
-	if (SpotLight)
-	{
-
-		SpotLight->SetVisibility(false);
-	}
 }
 
 void UFlashlightEffects::SwitchLight()
 {
-	if (!SpotLight)
-		return;
-
-	const bool IsVisible = SpotLight->IsVisible();
-	SpotLight->SetVisibility(!IsVisible);
-
-	if (SoundSwitchOn && SoundSwitchOff)
-	{
-		UGameplayStatics::PlaySound2D(this, IsVisible ? SoundSwitchOff : SoundSwitchOn);
-	}
 }
 
 // Called every frame
