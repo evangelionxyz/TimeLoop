@@ -27,6 +27,31 @@ BeginPlay() // Register itself to the GameMode using the RegisterResetables func
 `BP_TargetNPC` Player target to interact
 
 ---
+# C++ - The Collapse game flow (Prologue -> Earthquake -> Blackout)
+
+| Class | Role |
+|---|---|
+| `ACollapseDirector` | Level-placed. Runs the prologue, quake, blackout and emergency phases. Place **one** per level. |
+| `ACollapseTrigger` | Box trigger. Sends `EventId` (e.g. `Quake`, `SecondaryTremor`) to the director, optionally requiring an inventory item. |
+| `UApartmentLightController` | Added at runtime to every apartment light. Modes: `Normal`, `Buzz`, `Flicker`, `Stutter`, `Off`. Spawns Niagara sparks. |
+| `UFlashlightEffects` | Flashlight toggle, inventory gating, `FlickerFlashlight()`. |
+| `ATimeLoopGameState` | `bInPrologue`, `StartPrologue()`, `EndPrologueAndInitiateLoop()`, `OnPrologueStateChanged`. |
+
+Phases (`ECollapsePhase`): `Prologue` -> `InitialTremor` (3s) -> `StructuralRupture` (3s) -> blackout -> `Emergency`.
+
+Actor tags used by the director (all configurable):
+
+| Tag | On | Effect |
+|---|---|---|
+| `ApartmentLight` | any light actor | Controlled by the director (BP_ArpartmentLight is found by class automatically) |
+| `BuzzLamp` | light actor | Buzzes during the prologue (Maya's room) |
+| `StutterLamp` | light actor | Keeps stuttering after the blackout. If none is tagged, the lamp closest to the player is used |
+| `QuakeProp` | physics actor | Jitters during the quake |
+| `QuakeDust` | any actor | Extra dust spawn point |
+
+Debug: in PIE open the console and run `ke * TriggerEarthquakeSequence`.
+
+---
 # Enums
 `EEndReason` Types of End Reason
 | Name | Description |

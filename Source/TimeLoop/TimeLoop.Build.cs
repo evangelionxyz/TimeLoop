@@ -18,12 +18,14 @@ public class TimeLoop : ModuleRules
 			"UMG",
 			"Slate",
 			"SlateCore",
+			"Niagara",
 		]);
 
 		PublicIncludePaths.AddRange([
 			"TimeLoop",
 			"TimeLoop/Components",
 			"TimeLoop/Core",
+			"TimeLoop/Gameplay",
 			"TimeLoop/UI",
 		]);
 

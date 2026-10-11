@@ -16,6 +16,14 @@ void UFPSCameraEffects::SetShakingParameters(const float NewFrequency, const flo
 	VerticalOffsetIntensity = NewVerticalIntensity;
 }
 
+void UFPSCameraEffects::GetShakingParameters(float& OutFrequency, float& OutPitchIntensity, float& OutRollIntensity, float& OutVerticalIntensity) const
+{
+	OutFrequency = ShakingFrequency;
+	OutPitchIntensity = PitchIntensity;
+	OutRollIntensity = RollIntensity;
+	OutVerticalIntensity = VerticalOffsetIntensity;
+}
+
 void UFPSCameraEffects::SetLeaningParameters(const float NewTargetLeanAngle)
 {
 	TargetLeanAngle = NewTargetLeanAngle;

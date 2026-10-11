@@ -11,6 +11,7 @@ class UTimeLoopGameInstance;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnGameStateLoopCountChanged, int32, NewLoopCount);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnObjectiveStateChanged, bool, bSolved);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnPrologueStateChanged, bool, bInPrologue);
 
 // ATimeLoopGameState
 // Match/Level-specific GameState authority managing per-level loop counts,
@@ -42,6 +43,29 @@ public:
 	// Whether the current level is marked completed
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "TimeLoop|GameState")
 	bool bLevelCompleted = false;
+
+	// --- Prologue ---
+
+	// True while the level is in its calm pre-loop prologue. The loop timer must NOT run in this state.
+	// Off by default so levels without a prologue are unaffected; ACollapseDirector turns it on.
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "TimeLoop|GameState")
+	bool bInPrologue = false;
+
+	// Enters the prologue (no loop timer, no loop HUD). Ignored once the level has already looped at least once.
+	// Does not touch the loop count: your GameMode's existing IncrementLoopCount stays the single owner of it.
+	UFUNCTION(BlueprintCallable, Category = "TimeLoop|GameState")
+	void StartPrologue();
+
+	// Leaves the prologue. Call this when the player dies for the first time, right before StartLoop().
+	UFUNCTION(BlueprintCallable, Category = "TimeLoop|GameState")
+	void EndPrologueAndInitiateLoop();
+
+	UFUNCTION(BlueprintPure, Category = "TimeLoop|GameState")
+	bool IsInPrologue() const { return bInPrologue; }
+
+	// Broadcast when the prologue starts (true) or ends (false)
+	UPROPERTY(BlueprintAssignable, Category = "TimeLoop|GameState|Events")
+	FOnPrologueStateChanged OnPrologueStateChanged;
 
 	// --- Initialization & Sync ---
 

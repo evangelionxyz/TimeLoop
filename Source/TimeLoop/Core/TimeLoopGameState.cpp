@@ -37,6 +37,31 @@ void ATimeLoopGameState::BeginPlay()
 	SyncWithGameInstance();
 }
 
+void ATimeLoopGameState::StartPrologue()
+{
+	// A level that has already looped is never in its prologue again.
+	if (CurrentLevelLoopCount > 0 || bLevelCompleted)
+	{
+		bInPrologue = false;
+		return;
+	}
+
+	if (!bInPrologue)
+	{
+		bInPrologue = true;
+		OnPrologueStateChanged.Broadcast(true);
+	}
+}
+
+void ATimeLoopGameState::EndPrologueAndInitiateLoop()
+{
+	if (bInPrologue)
+	{
+		bInPrologue = false;
+		OnPrologueStateChanged.Broadcast(false);
+	}
+}
+
 void ATimeLoopGameState::InitializeForLevel(FName InLevelName)
 {
 	LevelName = InLevelName;

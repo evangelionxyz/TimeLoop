@@ -20,6 +20,10 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Camera Effects|Shaking")
 	void SetShakingParameters(float NewFrequency, float NewPitchIntensity, float NewRollIntensity, float NewVerticalIntensity);
 
+	// Reads the current shaking parameters so a temporary override (e.g. the earthquake) can restore them afterwards.
+	UFUNCTION(BlueprintPure, Category = "Camera Effects|Shaking")
+	void GetShakingParameters(float& OutFrequency, float& OutPitchIntensity, float& OutRollIntensity, float& OutVerticalIntensity) const;
+
 	UFUNCTION(BlueprintCallable, Category = "Camera Effects|Leaning")
 	void SetLeaningParameters(float NewTargetLeanAngle);
 
