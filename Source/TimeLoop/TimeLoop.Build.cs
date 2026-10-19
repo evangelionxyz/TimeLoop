@@ -19,6 +19,8 @@ public class TimeLoop : ModuleRules
 			"Slate",
 			"SlateCore",
 			"Niagara",
+			"AIModule",
+			"NavigationSystem",
 		]);
 
 		PublicIncludePaths.AddRange([
@@ -26,6 +28,7 @@ public class TimeLoop : ModuleRules
 			"TimeLoop/Components",
 			"TimeLoop/Core",
 			"TimeLoop/Gameplay",
+			"TimeLoop/Gameplay/TheCollapse",
 			"TimeLoop/UI",
 		]);
 
