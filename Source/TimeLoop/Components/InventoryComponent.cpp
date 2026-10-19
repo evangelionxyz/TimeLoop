@@ -47,7 +47,7 @@ bool UInventoryComponent::HasItem(FName ItemId) const
 	return !ItemId.IsNone() && FindItem(ItemId) != nullptr;
 }
 
-bool UInventoryComponent::HasKeyForDoor(FName RequiredKeyId) const
+bool UInventoryComponent::HasKeyForDoor(FName RequiredKeyId)
 {
 	if (RequiredKeyId.IsNone())
 	{

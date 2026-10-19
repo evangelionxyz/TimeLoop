@@ -55,7 +55,7 @@ public:
 
 	/** Returns true when the player owns the exact key identity required by a door. */
 	UFUNCTION(BlueprintPure, Category = "Inventory")
-	bool HasKeyForDoor(FName RequiredKeyId) const;
+	bool HasKeyForDoor(FName RequiredKeyId);
 
 	/** Equips only equippable inventory types. This does not remove other items. */
 	UFUNCTION(BlueprintCallable, Category = "Inventory")
