@@ -6,6 +6,8 @@
 #include "GameFramework/Actor.h"
 #include "TimerManager.h"
 #include "ApartmentLightController.h"
+#include "InputCoreTypes.h"
+#include "MayaState.h"
 #include "CollapseDirector.generated.h"
 
 class ATimeLoopGameState;
@@ -17,28 +19,36 @@ class USoundBase;
 UENUM(BlueprintType)
 enum class ECollapsePhase : uint8
 {
-	// Calm exploration, no loop timer, lamp in Maya's room buzzes
 	Prologue UMETA(DisplayName = "Prologue"),
-	// t = 0-3s: sub-audible rumble, props jitter, light shake
 	InitialTremor UMETA(DisplayName = "Initial Tremor"),
-	// t = 3-6s: violent shake, dust, lights flicker with sparks
 	StructuralRupture UMETA(DisplayName = "Structural Rupture"),
-	// After the pop: lights dead (one or more lamps stutter), player must find the flashlight
 	Emergency UMETA(DisplayName = "Emergency")
 };
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnCollapsePhaseChanged, ECollapsePhase, NewPhase);
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnCollapseMessage, FText, Message, float, Duration);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnCollapseCaption, FText, Message, float, Duration);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnCollapseEvent, FName, EventId, AActor*, EventInstigator);
 
-// Level-placed director for "The Collapse". Owns the prologue -> earthquake -> blackout flow:
-//  * puts the GameState in prologue (no loop timer) and optionally auto-fires the quake after a timeout
-//  * receives trigger events from ACollapseTrigger volumes
-//  * drives camera shake, props, Niagara dust/sparks, sounds and the apartment lights
-//  * on blackout kills every apartment light and leaves chosen lamps stuttering
-//
-// It works with the existing Blueprints: lights are found by class/tag and given a
-// UApartmentLightController at runtime, so BP_ArpartmentLight doesn't need to change.
+// One line of a conversation. Speaker is shown as "Speaker: Text" in the caption.
+USTRUCT(BlueprintType)
+struct FCollapseDialogueLine
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Dialogue")
+	FText Speaker;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Dialogue", meta = (MultiLine = "true"))
+	FText Text;
+
+	// Optional: re-broadcast through OnCollapseEvent when this line appears (e.g. "GiveGift" for the gift animation)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Dialogue")
+	FName EventId;
+};
+
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FOnCollapseDialogueLine, FText, Speaker, FText, Text, int32, Index);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnCollapseDialogueFinished);
+
 UCLASS()
 class TIMELOOP_API ACollapseDirector : public AActor
 {
@@ -83,7 +93,7 @@ public:
 
 	// Shows a line on the HUD: calls ShowMessage on HUD_TimeLoop / its HUDController if present, and broadcasts OnCollapseMessage.
 	UFUNCTION(BlueprintCallable, Category = "Collapse|Flow")
-	void ShowMessage(const FText& Message, float Duration = 4.0f);
+	void ShowCaption(const FText& Message, float Duration = 4.0f);
 
 	// --- Events ---
 
@@ -91,7 +101,7 @@ public:
 	FOnCollapsePhaseChanged OnCollapsePhaseChanged;
 
 	UPROPERTY(BlueprintAssignable, Category = "Collapse|Events")
-	FOnCollapseMessage OnCollapseMessage;
+	FOnCollapseCaption OnCollapseCaption;
 
 	UPROPERTY(BlueprintAssignable, Category = "Collapse|Events")
 	FOnCollapseEvent OnCollapseEvent;
@@ -223,6 +233,60 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Collapse|Audio")
 	TObjectPtr<USoundBase> MayaScreamSound;
 
+	// --- Prologue dialogue (Maya talks to Ethan, E advances) ---
+
+	// Conversation played when the prologue trigger fires. Edit per-instance in the level.
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Collapse|Dialogue")
+	TArray<FCollapseDialogueLine> PrologueDialogue;
+
+	// Trigger event id (ACollapseTrigger / HandleTriggerEvent) that starts the prologue conversation
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Collapse|Dialogue")
+	FName PrologueDialogueEventId = TEXT("PrologueTalk");
+
+	// Key that advances the conversation
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Collapse|Dialogue")
+	FKey DialogueAdvanceKey = EKeys::E;
+
+	// Appended to each caption so the player knows how to continue. Empty = none.
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Collapse|Dialogue")
+	FText ContinuePrompt;
+
+	// Safety timeout passed to the HUD caption for each line (the line is replaced when the player presses the key).
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Collapse|Dialogue", meta = (ClampMin = "1.0"))
+	float DialogueLineTimeout = 60.0f;
+
+	// Freeze movement and look while talking
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Collapse|Dialogue")
+	bool bFreezePlayerDuringDialogue = true;
+
+	// Seconds Maya takes to walk to her desk (MovingToDrawing) before she is set to Drawing
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Collapse|Dialogue", meta = (ClampMin = "0.0"))
+	float MayaMoveToDrawingDuration = 4.0f;
+
+	// Maya Blueprint (has a SetState(EMayaState) function). Used to send her to the desk after the talk.
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Collapse|Dialogue")
+	TSoftClassPtr<AActor> MayaClass;
+
+	// Starts the conversation (Maya -> TalkToEthan). Ignored if already talking or already played.
+	UFUNCTION(BlueprintCallable, Category = "Collapse|Dialogue")
+	void BeginPrologueDialogue();
+
+	// Shows the next line, or ends the conversation after the last one. Bound to DialogueAdvanceKey automatically;
+	// also callable from Blueprint (e.g. from your IA_Interact handler).
+	UFUNCTION(BlueprintCallable, Category = "Collapse|Dialogue")
+	void AdvanceDialogue();
+
+	UFUNCTION(BlueprintPure, Category = "Collapse|Dialogue")
+	bool IsDialogueActive() const { return bDialogueActive; }
+
+	// Broadcast for every line (Index is 0-based). Use it to drive speaker names, portraits, gift animations etc.
+	UPROPERTY(BlueprintAssignable, Category = "Collapse|Events")
+	FOnCollapseDialogueLine OnDialogueLine;
+
+	// Broadcast when the last line was dismissed. Maya is already set to MovingToDrawing at this point.
+	UPROPERTY(BlueprintAssignable, Category = "Collapse|Events")
+	FOnCollapseDialogueFinished OnDialogueFinished;
+
 	// --- Subtitles / monologue ---
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Collapse|Text")
@@ -245,6 +309,14 @@ private:
 	void PropJitterTick();
 	void StartStutterLamps();
 	void RestoreShaking();
+
+	UFUNCTION()
+	void HandleMayaStateChanged(EMayaState NewState, EMayaState OldState);
+	bool SetMayaBlueprintState(EMayaState NewState);
+	void ShowDialogueLine(int32 Index);
+	void EndDialogue();
+	void FinishMayaMoveToDrawing();
+	void RestorePlayerControl();
 
 	void CollectLights();
 	UApartmentLightController* EnsureController(AActor* LightActor);
@@ -270,6 +342,13 @@ private:
 	FTimerHandle PropHandle;
 	FTimerHandle StutterHandle;
 	FTimerHandle AftershockHandle;
+
+	FTimerHandle MayaDrawingHandle;
+
+	bool bDialogueActive = false;
+	bool bDialoguePlayed = false;
+	int32 DialogueIndex = INDEX_NONE;
+	bool bControlFrozen = false;
 
 	bool bShakeSaved = false;
 	float SavedShake[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
