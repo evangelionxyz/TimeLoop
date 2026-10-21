@@ -19,10 +19,19 @@ class USoundBase;
 UENUM(BlueprintType)
 enum class ECollapsePhase : uint8
 {
-	Prologue UMETA(DisplayName = "Prologue"),
-	InitialTremor UMETA(DisplayName = "Initial Tremor"),
+	Prologue          UMETA(DisplayName = "Prologue"),
+	InitialTremor     UMETA(DisplayName = "Initial Tremor"),
 	StructuralRupture UMETA(DisplayName = "Structural Rupture"),
-	Emergency UMETA(DisplayName = "Emergency")
+	Emergency         UMETA(DisplayName = "Emergency")
+};
+
+UENUM(BlueprintType)
+enum class ECollapseEndResult : uint8
+{
+	Success   UMETA(DisplayName = "Success"),
+	Timeout   UMETA(DisplayName = "Timeout"),
+	MayaDied  UMETA(DisplayName = "Maya Died"),
+	EthanDied UMETA(DisplayName = "Ethan Died"),
 };
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnCollapsePhaseChanged, ECollapsePhase, NewPhase);
@@ -48,6 +57,7 @@ struct FDialogueLine
 };
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FOnCollapseDialogueLine, FText, Speaker, FText, Text, int32, Index);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnCollapseResetState, ECollapseEndResult, EndResult);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnCollapseDialogueFinished);
 
 UCLASS()
@@ -65,6 +75,9 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "Collapse|Flow")
 	void StartFlow();
+
+	UFUNCTION(BlueprintCallable, Category = "Collapse|Flow")
+	void ResetState(const ECollapseEndResult EndResult);
 
 	// Starts the earthquake -> blackout sequence. Ignored unless currently in the prologue.
 	UFUNCTION(BlueprintCallable, Category = "Collapse|Flow")
@@ -292,8 +305,10 @@ public:
 	UPROPERTY(BlueprintAssignable, Category = "Collapse|Events")
 	FOnCollapseDialogueFinished OnDialogueFinished;
 
-	// --- Subtitles / monologue ---
+	UPROPERTY(BlueprintAssignable, Category = "Collapse|Events")
+	FOnCollapseResetState OnResetState;
 
+	// --- Subtitles / monologue ---
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Collapse|Text")
 	FText QuakeStartLine;
 

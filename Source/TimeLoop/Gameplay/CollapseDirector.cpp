@@ -193,6 +193,46 @@ void ACollapseDirector::StartFlow()
 	OnCollapsePhaseChanged.Broadcast(ECollapsePhase::Prologue);
 }
 
+void ACollapseDirector::ResetState(ECollapseEndResult EndResult)
+{
+	RestorePlayerControl();
+	RestoreShaking();
+	SetAllLights(EApartmentLightMode::Normal);
+	CurrentPhase = ECollapsePhase::Prologue;
+	bDialogueFinished = true;
+
+	// Stop Sounds
+	if (StructuralCrackSound)
+	{
+	}
+
+	if (RumbleSound)
+	{
+	}
+
+	if (SparkSound)
+	{
+	}
+
+	if (BlackoutPopSound)
+	{
+	}
+
+	if (MayaScreamSound)
+	{
+	}
+
+	if (MayaCryingSound)
+	{
+	}
+
+	if (MayaSurprisedSound)
+	{
+	}
+
+	OnResetState.Broadcast(EndResult);
+}
+
 void ACollapseDirector::TriggerEarthquakeSequence()
 {
 	if (CurrentPhase != ECollapsePhase::Prologue)
@@ -714,12 +754,12 @@ void ACollapseDirector::ShowDialogueLine(int32 Index)
 	}
 
 	ShowCaption(Caption, DialogueLineTimeout);
+
 	OnDialogueLine.Broadcast(Line.Speaker, Line.Text, Index);
 
 	if (MayaSurprisedSound && DialogueIndex == 1)
 	{
 		UGameplayStatics::PlaySound2D(this, MayaSurprisedSound);
-
 	}
 
 	if (!Line.EventId.IsNone())

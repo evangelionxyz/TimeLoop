@@ -33,6 +33,7 @@ void AMayaCharacter::BeginPlay()
 	{
 		Director->OnDialogueFinished.AddDynamic(this, &AMayaCharacter::HandleDialogueFinished);
 		Director->OnCollapseEvent.AddDynamic(this, &AMayaCharacter::HandleCollapseEvent);
+		Director->OnResetState.AddDynamic(this, &AMayaCharacter::HandleCollpaseResetState);
 	}
 
 	// Maya first state must be drawing
@@ -52,6 +53,7 @@ void AMayaCharacter::EndPlay(const EEndPlayReason::Type EndPlayReason)
 	{
 		CachedDirector->OnDialogueFinished.RemoveDynamic(this, &AMayaCharacter::HandleDialogueFinished);
 		CachedDirector->OnCollapseEvent.RemoveDynamic(this, &AMayaCharacter::HandleCollapseEvent);
+		CachedDirector->OnResetState.RemoveDynamic(this, &AMayaCharacter::HandleCollpaseResetState);
 	}
 
 	Super::EndPlay(EndPlayReason);
@@ -259,6 +261,12 @@ void AMayaCharacter::HandleDialogueFinished()
 	default:
 		break;
 	}
+}
+
+
+void AMayaCharacter::HandleCollpaseResetState(const ECollapseEndResult EndResult)
+{
+	SetState(EMayaState::MovingToDrawing);
 }
 
 void AMayaCharacter::AttachDrawingActors()

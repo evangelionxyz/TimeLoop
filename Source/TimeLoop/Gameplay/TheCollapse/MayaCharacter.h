@@ -44,7 +44,6 @@ public:
 	void HandleInteraction();
 
 	// --- Navigation ---
-
 	UFUNCTION(BlueprintCallable, Category = "Maya|Movement")
 	void MoveToTarget(AActor* TargetActor);
 
@@ -52,7 +51,6 @@ public:
 	void StopMovement();
 
 	// --- Drawing Items ---
-
 	UFUNCTION(BlueprintCallable, Category = "Maya|Drawing")
 	void AttachDrawingActors();
 
@@ -60,7 +58,6 @@ public:
 	void DetachDrawingActors();
 
 	// --- Navigation Target Points ---
-
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Maya|Targets")
 	TObjectPtr<AActor> Ethan_TargetPoint;
 
@@ -71,7 +68,6 @@ public:
 	TObjectPtr<AActor> Shelter_TargetPoint;
 
 	// --- Drawing Setup ---
-
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Maya|Drawing")
 	TObjectPtr<AActor> Crayon;
 
@@ -88,7 +84,6 @@ public:
 	FName PaperSocketName = TEXT("Hand_L_Socket");
 
 	// --- Acceptance Radius ---
-
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Maya|Movement")
 	float MoveAcceptanceRadius = 50.0f;
 
@@ -105,6 +100,8 @@ protected:
 	UFUNCTION()
 	void HandleDialogueFinished();
 
+	UFUNCTION()
+	void HandleCollpaseResetState(const ECollapseEndResult EndResult);
 
 	ACollapseDirector* GetCollapseDirector();
 	ATimeLoopGameState* GetTimeLoopGameState();
