@@ -5,7 +5,6 @@
 #include "CoreMinimal.h"
 #include "GameFramework/GameState.h"
 #include "TimeLoopSaveGame.h"
-#include "MayaState.h"
 #include "TimeLoopGameState.generated.h"
 
 class UTimeLoopGameInstance;

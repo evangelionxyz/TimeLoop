@@ -28,6 +28,7 @@ enum class ECollapsePhase : uint8
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnCollapsePhaseChanged, ECollapsePhase, NewPhase);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnCollapseCaption, FText, Message, float, Duration);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnCollapseEvent, FName, EventId, AActor*, EventInstigator);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnCollapseCeilingTriggered);
 
 // One line of a conversation. Speaker is shown as "Speaker: Text" in the caption.
 USTRUCT(BlueprintType)
@@ -89,6 +90,10 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Collapse|Flow")
 	void ApplyPostBlackoutState();
 
+	// Triggers the ceiling collapse sequence (drops ceiling beams / debris in Maya's room)
+	UFUNCTION(BlueprintCallable, Category = "Collapse|Flow")
+	void TriggerCeilingCollapse();
+
 	// Shows a line on the HUD: calls ShowMessage on HUD_TimeLoop / its HUDController if present, and broadcasts OnCollapseMessage.
 	UFUNCTION(BlueprintCallable, Category = "Collapse|Flow")
 	void ShowCaption(const FText& Message, float Duration = 4.0f);
@@ -103,6 +108,10 @@ public:
 
 	UPROPERTY(BlueprintAssignable, Category = "Collapse|Events")
 	FOnCollapseEvent OnCollapseEvent;
+
+	// Broadcast when the ceiling collapse is triggered (climax / countdown end)
+	UPROPERTY(BlueprintAssignable, Category = "Collapse|Events")
+	FOnCollapseCeilingTriggered OnCeilingCollapseTriggered;
 
 	// --- Prologue ---
 
@@ -228,18 +237,21 @@ public:
 	TObjectPtr<USoundBase> BlackoutPopSound;
 
 	// "ETHAN?! THE LIGHTS WENT OUT!" through the intercom
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Collapse|Audio")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Collapse|Audio|Maya")
 	TObjectPtr<USoundBase> MayaScreamSound;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Collapse|Audio|Maya")
+	TObjectPtr<USoundBase> MayaCryingSound;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Collapse|Audio|Maya")
+	TObjectPtr<USoundBase> MayaSurprisedSound;
 
 	// --- Prologue dialogue (Maya talks to Ethan, E advances) ---
 
+	// Trigger event id (ACollapseTrigger / HandleTriggerEvent) that starts the prologue conversation
 	// Conversation played when the prologue trigger fires. Edit per-instance in the level.
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Collapse|Dialogue")
 	TArray<FDialogueLine> PrologueDialogue;
-
-	// Trigger event id (ACollapseTrigger / HandleTriggerEvent) that starts the prologue conversation
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Collapse|Dialogue")
-	FName PrologueDialogueEventId = TEXT("PrologueTalk");
 
 	// Key that advances the conversation
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Collapse|Dialogue")
@@ -257,14 +269,6 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Collapse|Dialogue")
 	bool bFreezePlayerDuringDialogue = true;
 
-	// Seconds Maya takes to walk to her desk (MovingToDrawing) before she is set to Drawing
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Collapse|Dialogue", meta = (ClampMin = "0.0"))
-	float MayaMoveToDrawingDuration = 4.0f;
-
-	// Maya Blueprint (has a SetState(EMayaState) function). Used to send her to the desk after the talk.
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Collapse|Dialogue")
-	TSoftClassPtr<AActor> MayaClass;
-
 	// Starts the conversation (Maya -> TalkToEthan). Ignored if already talking or already played.
 	UFUNCTION(BlueprintCallable, Category = "Collapse|Dialogue")
 	void BeginPrologueDialogue();
@@ -273,6 +277,9 @@ public:
 	// also callable from Blueprint (e.g. from your IA_Interact handler).
 	UFUNCTION(BlueprintCallable, Category = "Collapse|Dialogue")
 	void AdvanceDialogue();
+
+	UFUNCTION(BlueprintPure, Category = "Collapse|Dialogue")
+	bool HasDialogFinished() const { return bDialogueFinished; }
 
 	UFUNCTION(BlueprintPure, Category = "Collapse|Dialogue")
 	bool IsDialogueActive() const { return bDialogueActive; }
@@ -308,12 +315,8 @@ private:
 	void StartStutterLamps();
 	void RestoreShaking();
 
-	UFUNCTION()
-	void HandleMayaStateChanged(EMayaState NewState, EMayaState OldState);
-	bool SetMayaBlueprintState(EMayaState NewState);
 	void ShowDialogueLine(int32 Index);
 	void EndDialogue();
-	void FinishMayaMoveToDrawing();
 	void RestorePlayerControl();
 
 	void CollectLights();
@@ -343,6 +346,7 @@ private:
 
 	FTimerHandle MayaDrawingHandle;
 
+	bool bDialogueFinished = false;
 	bool bDialogueActive = false;
 	bool bDialoguePlayed = false;
 	int32 DialogueIndex = INDEX_NONE;

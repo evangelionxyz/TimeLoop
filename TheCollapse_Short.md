@@ -1,9 +1,10 @@
 # ====== PROLOGUE ======
-# 1. Ethan walked up to Maya's room (Room 101)
-# 2. Maya open the door
-# 3. Maya talk to Ethan
-# 4. Ethan give Maya the Birthday Gift
-# 5. Maya moving to drawing
+# 1. Maya is Drawing
+# 2. Ethan walked up to Maya's room (Room 101)
+# 3. Maya aproaches Ethan
+# 4. Maya talk to Ethan
+# 5. Ethan give Maya the Birthday Gift
+# 6. Maya moving to drawing
 
 # ====== DISASTER BEGIN ======
 # 1. Ethan back to his room (Room 201)

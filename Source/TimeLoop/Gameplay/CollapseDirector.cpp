@@ -91,8 +91,6 @@ ACollapseDirector::ACollapseDirector()
 	MayaScreamLine = NSLOCTEXT("Collapse", "MayaScream", "ETHAN?! THE LIGHTS WENT OUT! SOMETHING CRASHED OUTSIDE! ETHAN, HELP ME!");
 	EmergencyLine = NSLOCTEXT("Collapse", "Emergency", "The power's out! I need to grab the flashlight and get down to Maya!");
 
-	MayaClass = TSoftClassPtr<AActor>(FSoftObjectPath(TEXT("/Game/Core/Characters/BP_Maya.BP_Maya_C")));
-
 	ContinuePrompt = NSLOCTEXT("Collapse", "ContinuePrompt", "[E] Continue");
 
 	auto MakeLine = [](const FText& Speaker, const FText& Text, FName EventId = NAME_None)
@@ -103,9 +101,12 @@ ACollapseDirector::ACollapseDirector()
 		Line.EventId = EventId;
 		return Line;
 	};
+
 	const FText Maya = NSLOCTEXT("Collapse", "SpeakerMaya", "Maya");
 	const FText Ethan = NSLOCTEXT("Collapse", "SpeakerEthan", "Ethan");
-	PrologueDialogue = {
+	
+	PrologueDialogue =
+	{
 		MakeLine(Maya, NSLOCTEXT("Collapse", "P1", "Ethan! You came!")),
 		MakeLine(Ethan, NSLOCTEXT("Collapse", "P2", "Happy birthday, Maya. I got you something."), TEXT("GiveGift")),
 		MakeLine(Maya, NSLOCTEXT("Collapse", "P3", "You didn't have to... Thank you, I love it!")),
@@ -163,7 +164,6 @@ void ACollapseDirector::StartFlow()
 	if (GameState)
 	{
 		GameState->StartPrologue();
-		// GameState->OnMayaStateChanged.AddUniqueDynamic(this, &ACollapseDirector::HandleMayaStateChanged);
 	}
 
 	// No GameState means we can't know the loop count: treat it as a fresh run.
@@ -219,10 +219,6 @@ void ACollapseDirector::HandleTriggerEvent(FName EventId, AActor* EventInstigato
 	else if (EventId == SecondaryTremorEventId)
 	{
 		PlaySecondaryTremor();
-	}
-	else if (EventId == PrologueDialogueEventId)
-	{
-		BeginPrologueDialogue();
 	}
 
 	OnCollapseEvent.Broadcast(EventId, EventInstigator);
@@ -342,6 +338,12 @@ void ACollapseDirector::ApplyPostBlackoutState()
 		bFlowStarted = true;
 		CollectLights();
 	}
+}
+
+void ACollapseDirector::TriggerCeilingCollapse()
+{
+	OnCeilingCollapseTriggered.Broadcast();
+	OnCollapseEvent.Broadcast(TEXT("CeilingCollapse"), nullptr);
 
 	GetWorldTimerManager().ClearTimer(PrologueTimeoutHandle);
 
@@ -653,6 +655,7 @@ void ACollapseDirector::BeginPrologueDialogue()
 
 	const bool bHadInput = InputComponent != nullptr;
 	EnableInput(PC);
+
 	if (InputComponent && !bHadInput)
 	{
 		InputComponent->BindKey(DialogueAdvanceKey, IE_Pressed, this, &ACollapseDirector::AdvanceDialogue);
@@ -661,14 +664,13 @@ void ACollapseDirector::BeginPrologueDialogue()
 	if (bFreezePlayerDuringDialogue)
 	{
 		PC->SetIgnoreMoveInput(true);
-		PC->SetIgnoreLookInput(true);
+		// PC->SetIgnoreLookInput(true);
 		bControlFrozen = true;
 	}
 
 	if (ATimeLoopGameState* GameState = GetTimeLoopGameState())
 	{
 		GameState->SetInDialogue(true);
-		//GameState->SetMayaState(EMayaState::TalkToEthan);
 	}
 
 	ShowDialogueLine(0);
@@ -714,6 +716,12 @@ void ACollapseDirector::ShowDialogueLine(int32 Index)
 	ShowCaption(Caption, DialogueLineTimeout);
 	OnDialogueLine.Broadcast(Line.Speaker, Line.Text, Index);
 
+	if (MayaSurprisedSound && DialogueIndex == 1)
+	{
+		UGameplayStatics::PlaySound2D(this, MayaSurprisedSound);
+
+	}
+
 	if (!Line.EventId.IsNone())
 	{
 		OnCollapseEvent.Broadcast(Line.EventId, UGameplayStatics::GetPlayerPawn(this, 0));
@@ -740,6 +748,7 @@ void ACollapseDirector::EndDialogue()
 	{
 		ShowCaption(PrologueDialogue[DialogueIndex].Text, 0.05f);
 	}
+
 	DialogueIndex = INDEX_NONE;
 
 	if (ATimeLoopGameState* GameState = GetTimeLoopGameState())
@@ -747,71 +756,8 @@ void ACollapseDirector::EndDialogue()
 		GameState->SetInDialogue(false);
 	}
 
+	bDialogueFinished = true;
 	OnDialogueFinished.Broadcast();
-
-	// Preferred: let BP_Maya run her own state machine (walk to desk, then Drawing). Its SetState mirrors into the GameState.
-	if (SetMayaBlueprintState(EMayaState::MovingToDrawing))
-	{
-		return;
-	}
-
-	// Fallback when no Maya Blueprint is in the level: just drive the GameState state on a timer.
-	if (ATimeLoopGameState* GameState = GetTimeLoopGameState())
-	{
-		//GameState->SetMayaState(EMayaState::MovingToDrawing);
-	}
-	// GetWorldTimerManager().SetTimer(MayaDrawingHandle, this, &ACollapseDirector::FinishMayaMoveToDrawing, FMath::Max(MayaMoveToDrawingDuration, 0.01f), false);
-}
-
-void ACollapseDirector::HandleMayaStateChanged(EMayaState NewState, EMayaState OldState)
-{
-	// BP_Maya reaches TalkToEthan once she has walked up to him: that is when the conversation starts.
-	if (NewState == EMayaState::TalkToEthan)
-	{
-		BeginPrologueDialogue();
-	}
-}
-
-bool ACollapseDirector::SetMayaBlueprintState(EMayaState NewState)
-{
-	UClass* Class = MayaClass.LoadSynchronous();
-	if (!Class || !GetWorld())
-	{
-		return false;
-	}
-
-	TArray<AActor*> Found;
-	UGameplayStatics::GetAllActorsOfClass(this, Class, Found);
-	UFunction* Func = Class->FindFunctionByName(TEXT("SetState"));
-	if (Found.IsEmpty() || !Func || Func->ParmsSize <= 0)
-	{
-		return false;
-	}
-
-	uint8* Params = static_cast<uint8*>(FMemory_Alloca(Func->ParmsSize));
-	FMemory::Memzero(Params, Func->ParmsSize);
-	bool bSet = false;
-	for (TFieldIterator<FProperty> It(Func); It && It->HasAnyPropertyFlags(CPF_Parm); ++It)
-	{
-		if (const FByteProperty* ByteProp = CastField<FByteProperty>(*It))
-		{
-			ByteProp->SetPropertyValue_InContainer(Params, static_cast<uint8>(NewState));
-			bSet = true;
-			break;
-		}
-		if (const FEnumProperty* EnumProp = CastField<FEnumProperty>(*It))
-		{
-			EnumProp->GetUnderlyingProperty()->SetIntPropertyValue(EnumProp->ContainerPtrToValuePtr<void>(Params), static_cast<int64>(NewState));
-			bSet = true;
-			break;
-		}
-	}
-
-	if (bSet)
-	{
-		Found[0]->ProcessEvent(Func, Params);
-	}
-	return bSet;
 }
 
 void ACollapseDirector::RestorePlayerControl()
