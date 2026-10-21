@@ -62,18 +62,6 @@ void ATimeLoopGameState::EndPrologueAndInitiateLoop()
 	}
 }
 
-void ATimeLoopGameState::SetMayaState(EMayaState NewState)
-{
-	if (CurrentMayaState == NewState)
-	{
-		return;
-	}
-
-	const EMayaState OldState = CurrentMayaState;
-	CurrentMayaState = NewState;
-	OnMayaStateChanged.Broadcast(NewState, OldState);
-}
-
 void ATimeLoopGameState::SetInDialogue(bool bNewInDialogue)
 {
 	if (bInDialogue != bNewInDialogue)

@@ -31,7 +31,7 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnCollapseEvent, FName, EventId, A
 
 // One line of a conversation. Speaker is shown as "Speaker: Text" in the caption.
 USTRUCT(BlueprintType)
-struct FCollapseDialogueLine
+struct FDialogueLine
 {
 	GENERATED_BODY()
 
@@ -62,8 +62,6 @@ public:
 
 	// --- Flow control ---
 
-	// Starts the flow: enters the prologue on a fresh level, or applies the post-blackout world on loop >= 1.
-	// Called automatically from BeginPlay when bAutoStartPrologue is true.
 	UFUNCTION(BlueprintCallable, Category = "Collapse|Flow")
 	void StartFlow();
 
@@ -237,7 +235,7 @@ public:
 
 	// Conversation played when the prologue trigger fires. Edit per-instance in the level.
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Collapse|Dialogue")
-	TArray<FCollapseDialogueLine> PrologueDialogue;
+	TArray<FDialogueLine> PrologueDialogue;
 
 	// Trigger event id (ACollapseTrigger / HandleTriggerEvent) that starts the prologue conversation
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Collapse|Dialogue")

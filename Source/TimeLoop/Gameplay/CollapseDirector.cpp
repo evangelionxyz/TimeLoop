@@ -19,15 +19,15 @@ DEFINE_LOG_CATEGORY_STATIC(LogCollapse, Log, All);
 
 namespace
 {
-	bool CallBlueprintShowCaption(UObject* Target, const FText& Message, float Duration)
+	bool CallBlueprintShowCaption(UObject *Target, const FText &Message, float Duration)
 	{
-		UFunction* Func = Target ? Target->FindFunction(TEXT("ShowCaption")) : nullptr;
+		UFunction *Func = Target ? Target->FindFunction(TEXT("ShowCaption")) : nullptr;
 		if (!Func || Func->ParmsSize <= 0)
 		{
 			return false;
 		}
 
-		uint8* Params = static_cast<uint8*>(FMemory_Alloca(Func->ParmsSize));
+		uint8 *Params = static_cast<uint8 *>(FMemory_Alloca(Func->ParmsSize));
 		FMemory::Memzero(Params, Func->ParmsSize);
 
 		for (TFieldIterator<FProperty> It(Func); It && It->HasAnyPropertyFlags(CPF_Parm); ++It)
@@ -38,27 +38,27 @@ namespace
 		bool bTextSet = false;
 		for (TFieldIterator<FProperty> It(Func); It && It->HasAnyPropertyFlags(CPF_Parm); ++It)
 		{
-			FProperty* Prop = *It;
+			FProperty *Prop = *It;
 			if (Prop->HasAnyPropertyFlags(CPF_ReturnParm))
 			{
 				continue;
 			}
 
-			if (const FTextProperty* TextProp = CastField<FTextProperty>(Prop))
+			if (const FTextProperty *TextProp = CastField<FTextProperty>(Prop))
 			{
 				TextProp->SetPropertyValue_InContainer(Params, Message);
 				bTextSet = true;
 			}
-			else if (const FStrProperty* StrProp = CastField<FStrProperty>(Prop))
+			else if (const FStrProperty *StrProp = CastField<FStrProperty>(Prop))
 			{
 				StrProp->SetPropertyValue_InContainer(Params, Message.ToString());
 				bTextSet = true;
 			}
-			else if (const FFloatProperty* FloatProp = CastField<FFloatProperty>(Prop))
+			else if (const FFloatProperty *FloatProp = CastField<FFloatProperty>(Prop))
 			{
 				FloatProp->SetPropertyValue_InContainer(Params, Duration);
 			}
-			else if (const FDoubleProperty* DoubleProp = CastField<FDoubleProperty>(Prop))
+			else if (const FDoubleProperty *DoubleProp = CastField<FDoubleProperty>(Prop))
 			{
 				DoubleProp->SetPropertyValue_InContainer(Params, Duration);
 			}
@@ -97,7 +97,7 @@ ACollapseDirector::ACollapseDirector()
 
 	auto MakeLine = [](const FText& Speaker, const FText& Text, FName EventId = NAME_None)
 	{
-		FCollapseDialogueLine Line;
+		FDialogueLine Line;
 		Line.Speaker = Speaker;
 		Line.Text = Text;
 		Line.EventId = EventId;
@@ -163,7 +163,7 @@ void ACollapseDirector::StartFlow()
 	if (GameState)
 	{
 		GameState->StartPrologue();
-		GameState->OnMayaStateChanged.AddUniqueDynamic(this, &ACollapseDirector::HandleMayaStateChanged);
+		// GameState->OnMayaStateChanged.AddUniqueDynamic(this, &ACollapseDirector::HandleMayaStateChanged);
 	}
 
 	// No GameState means we can't know the loop count: treat it as a fresh run.
@@ -668,7 +668,7 @@ void ACollapseDirector::BeginPrologueDialogue()
 	if (ATimeLoopGameState* GameState = GetTimeLoopGameState())
 	{
 		GameState->SetInDialogue(true);
-		GameState->SetMayaState(EMayaState::TalkToEthan);
+		//GameState->SetMayaState(EMayaState::TalkToEthan);
 	}
 
 	ShowDialogueLine(0);
@@ -699,7 +699,7 @@ void ACollapseDirector::ShowDialogueLine(int32 Index)
 	}
 
 	DialogueIndex = Index;
-	const FCollapseDialogueLine& Line = PrologueDialogue[Index];
+	const FDialogueLine &Line = PrologueDialogue[Index];
 
 	FText Caption = Line.Text;
 	if (!Line.Speaker.IsEmpty())
@@ -758,9 +758,9 @@ void ACollapseDirector::EndDialogue()
 	// Fallback when no Maya Blueprint is in the level: just drive the GameState state on a timer.
 	if (ATimeLoopGameState* GameState = GetTimeLoopGameState())
 	{
-		GameState->SetMayaState(EMayaState::MovingToDrawing);
+		//GameState->SetMayaState(EMayaState::MovingToDrawing);
 	}
-	GetWorldTimerManager().SetTimer(MayaDrawingHandle, this, &ACollapseDirector::FinishMayaMoveToDrawing, FMath::Max(MayaMoveToDrawingDuration, 0.01f), false);
+	// GetWorldTimerManager().SetTimer(MayaDrawingHandle, this, &ACollapseDirector::FinishMayaMoveToDrawing, FMath::Max(MayaMoveToDrawingDuration, 0.01f), false);
 }
 
 void ACollapseDirector::HandleMayaStateChanged(EMayaState NewState, EMayaState OldState)
@@ -812,18 +812,6 @@ bool ACollapseDirector::SetMayaBlueprintState(EMayaState NewState)
 		Found[0]->ProcessEvent(Func, Params);
 	}
 	return bSet;
-}
-
-void ACollapseDirector::FinishMayaMoveToDrawing()
-{
-	if (ATimeLoopGameState* GameState = GetTimeLoopGameState())
-	{
-		// Don't overwrite the quake reaction if the earthquake started while she was walking.
-		if (GameState->GetMayaState() == EMayaState::MovingToDrawing)
-		{
-			GameState->SetMayaState(EMayaState::Drawing);
-		}
-	}
 }
 
 void ACollapseDirector::RestorePlayerControl()

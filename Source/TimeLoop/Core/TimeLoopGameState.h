@@ -13,12 +13,8 @@ class UTimeLoopGameInstance;
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnGameStateLoopCountChanged, int32, NewLoopCount);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnObjectiveStateChanged, bool, bSolved);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnPrologueStateChanged, bool, bInPrologue);
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnMayaStateChanged, EMayaState, NewState, EMayaState, OldState);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnDialogueStateChanged, bool, bInDialogue);
 
-// ATimeLoopGameState
-// Match/Level-specific GameState authority managing per-level loop counts,
-// puzzle/objective completion status, and synchronization with the persistent GameInstance.
 UCLASS()
 class TIMELOOP_API ATimeLoopGameState : public AGameState
 {
@@ -70,17 +66,7 @@ public:
 	UPROPERTY(BlueprintAssignable, Category = "TimeLoop|GameState|Events")
 	FOnPrologueStateChanged OnPrologueStateChanged;
 
-	// --- Maya / Dialogue ---
-
-	// Current behaviour state of Maya (see MayaState.h). Bind OnMayaStateChanged in her Blueprint/AI to react.
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "TimeLoop|GameState|Maya")
-	EMayaState CurrentMayaState = EMayaState::Inactive;
-
-	UFUNCTION(BlueprintCallable, Category = "TimeLoop|GameState|Maya")
-	void SetMayaState(EMayaState NewState);
-
-	UFUNCTION(BlueprintPure, Category = "TimeLoop|GameState|Maya")
-	EMayaState GetMayaState() const { return CurrentMayaState; }
+	// Dialogue
 
 	// True while a conversation is on screen (player is advancing lines with the key). Other systems can check this.
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "TimeLoop|GameState|Dialogue")
@@ -92,8 +78,6 @@ public:
 	UFUNCTION(BlueprintPure, Category = "TimeLoop|GameState|Dialogue")
 	bool IsInDialogue() const { return bInDialogue; }
 
-	UPROPERTY(BlueprintAssignable, Category = "TimeLoop|GameState|Events")
-	FOnMayaStateChanged OnMayaStateChanged;
 
 	UPROPERTY(BlueprintAssignable, Category = "TimeLoop|GameState|Events")
 	FOnDialogueStateChanged OnDialogueStateChanged;

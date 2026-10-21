@@ -32,3 +32,13 @@
 # 12. She is trying to seeking for other shelter but too far
 # 13. Ethan need to bring the shelter
 # 14. Maya will be Saved or Crushed
+
+# ====== PROLOGUE DIALOGUE ======
+# Plays when Maya reaches Ethan (TalkToEthan). Press [E] to continue each line.
+# Source: ACollapseDirector::PrologueDialogue (editable on CollapseDirector in the level)
+# 1. Maya:  Ethan! You came!
+# 2. Ethan: Happy birthday, Maya. I got you something.   [event: GiveGift]
+# 3. Maya:  You didn't have to... Thank you, I love it!
+# 4. Ethan: Anything for my little sister. Go on, don't let me keep you from your drawing.
+# 5. Maya:  Okay! I'll finish it before dinner. Bye, Ethan!
+# -> Maya moves to drawing
