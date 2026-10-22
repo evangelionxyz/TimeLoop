@@ -39,8 +39,7 @@ void ATimeLoopGameState::BeginPlay()
 
 void ATimeLoopGameState::StartPrologue()
 {
-	// A level that has already looped is never in its prologue again.
-	if (CurrentLevelLoopCount > 0 || bLevelCompleted)
+	if (bLevelCompleted)
 	{
 		bInPrologue = false;
 		return;

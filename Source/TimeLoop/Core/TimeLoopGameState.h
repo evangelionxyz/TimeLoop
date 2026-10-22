@@ -49,7 +49,7 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "TimeLoop|GameState")
 	bool bInPrologue = false;
 
-	// Enters the prologue (no loop timer, no loop HUD). Ignored once the level has already looped at least once.
+	// Enters the prologue (no loop timer, no loop HUD). Can be re-entered when resetting the loop.
 	// Does not touch the loop count: your GameMode's existing IncrementLoopCount stays the single owner of it.
 	UFUNCTION(BlueprintCallable, Category = "TimeLoop|GameState")
 	void StartPrologue();

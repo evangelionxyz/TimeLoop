@@ -95,6 +95,9 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Maya|Dialogue")
 	FName ApproachEthanId = TEXT("ApproachEthan");
 
+	// Sound
+
+
 protected:
 	void HandleMoveCompleted(FAIRequestID RequestID, const FPathFollowingResult& Result);
 
@@ -124,6 +127,6 @@ protected:
 
 	FDelegateHandle MoveCompleteHandle;
 
-	FTransform CrayonOriginalTransform;
-	FTransform DrawingPaperOriginalTransform;
+	FTransform CrayonInitialTransform;
+	FTransform DrawingPaperInitialTransform;
 };

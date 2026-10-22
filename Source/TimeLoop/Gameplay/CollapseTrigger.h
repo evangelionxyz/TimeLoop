@@ -20,6 +20,7 @@ public:
 protected:
 	
 	virtual void BeginPlay() override;
+	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Collapse|Trigger")
 	TObjectPtr<UBoxComponent> TriggerBox;
@@ -28,7 +29,17 @@ protected:
 	virtual void OnOverlapBegin(UPrimitiveComponent *OverlappedComp, AActor *OtherActor,
 		UPrimitiveComponent *OtherComp, int32 OtherBodyIndex,
 		bool bFromWeep, const FHitResult &SweepResult);
+
+	UFUNCTION()
+	void HandleResetState(const ECollapseEndResult EndResult);
+
 public:	
+
+	UFUNCTION(BlueprintCallable, Category = "Collapse|Trigger")
+	void ResetTrigger();
+
+	UFUNCTION(BlueprintCallable, Category = "Collapse|Trigger")
+	void OnLoopReset() { ResetTrigger(); }
 
 	// EventId sent to ACollapseDirector:HandleTriggerEvent (e.g "Quake", "ApproachMaya", "StairsFallingBeam")
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Collapse|Trigger")

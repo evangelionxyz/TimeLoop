@@ -14,6 +14,7 @@
 #include "Kismet/GameplayStatics.h"
 #include "NiagaraFunctionLibrary.h"
 #include "NiagaraSystem.h"
+#include "Components/AudioComponent.h"
 
 DEFINE_LOG_CATEGORY_STATIC(LogCollapse, Log, All);
 
@@ -143,6 +144,17 @@ void ACollapseDirector::ResetState(const ECollapseEndResult EndResult)
 	TimerManager.ClearTimer(AftershockHandle);
 	TimerManager.ClearTimer(MayaDrawingHandle);
 
+	// Stop sound
+	if (MayaCryingAudioComponent && MayaCryingAudioComponent->IsPlaying())
+	{
+		MayaCryingAudioComponent->Stop();
+	}
+
+	if (RumbleAudioComponent && RumbleAudioComponent->IsPlaying())
+	{
+		RumbleAudioComponent->Stop();
+	}
+
 	RestorePlayerControl();
 	RestoreShaking();
 
@@ -183,9 +195,16 @@ void ACollapseDirector::ResetState(const ECollapseEndResult EndResult)
 		bDialogueActive = false;
 		bDialoguePlayed = true;
 
+		if (ATimeLoopGameState* GameState = GetTimeLoopGameState())
+		{
+			GameState->StartPrologue();
+		}
+
 		// Notify listeners (e.g. Maya character resets back to her drawing)
 		OnResetState.Broadcast(EndResult);
 
+		// NOTE: THESE TWO FUNCTION CAN ONLY BE TRIGGERED BY TRIGGERS NOT MANUALLY BY TIMER
+#if 0
 		// Re-trigger the earthquake / blackout sequence and Maya scream line
 		if (ResetBlackoutDelay > 0.0f)
 		{
@@ -209,6 +228,7 @@ void ACollapseDirector::ResetState(const ECollapseEndResult EndResult)
 				EnterBlackout();
 			}
 		}
+#endif
 		break;
 	}
 	}
@@ -270,7 +290,22 @@ void ACollapseDirector::EnterInitialTremor()
 
 	if (RumbleSound)
 	{
-		UGameplayStatics::PlaySound2D(this, RumbleSound);
+		if (RumbleAudioComponent && RumbleAudioComponent->IsPlaying())
+		{
+			RumbleAudioComponent->Stop();
+		}
+
+		RumbleAudioComponent = UGameplayStatics::SpawnSound2D(this, RumbleSound);
+	}
+
+	// Play Hearth Beat
+	if (HearthbeatSound)
+	{
+		if (HearthbeatAudioComponent && HearthbeatAudioComponent->IsPlaying())
+		{
+			HearthbeatAudioComponent->Stop();
+		}
+		HearthbeatAudioComponent = UGameplayStatics::SpawnSound2D(this, HearthbeatSound);
 	}
 
 	ShowCaption(QuakeStartLine, InitialTremorDuration);
@@ -350,6 +385,25 @@ void ACollapseDirector::EnterBlackout()
 void ACollapseDirector::EnterEmergency()
 {
 	EnterPhase(ECollapsePhase::Emergency);
+
+	if (MayaCryingSound)
+	{
+		if (MayaCryingAudioComponent && MayaCryingAudioComponent->IsPlaying())
+		{
+			MayaCryingAudioComponent->Stop();
+		}
+		MayaCryingAudioComponent = UGameplayStatics::SpawnSound2D(this, MayaCryingSound);
+	}
+
+	// Stop Hearth Beat
+	if (HearthbeatSound)
+	{
+		if (HearthbeatAudioComponent && HearthbeatAudioComponent->IsPlaying())
+		{
+			HearthbeatAudioComponent->Stop();
+		}
+	}
+
 	ShowCaption(EmergencyLine, 5.0f);
 }
 
@@ -387,7 +441,11 @@ void ACollapseDirector::PlaySecondaryTremor()
 
 	if (RumbleSound)
 	{
-		UGameplayStatics::PlaySound2D(this, RumbleSound);
+		if (RumbleAudioComponent && RumbleAudioComponent->IsPlaying())
+		{
+			RumbleAudioComponent->Stop();
+		}
+		RumbleAudioComponent = UGameplayStatics::SpawnSound2D(this, RumbleSound);
 	}
 
 	if (StructuralCrackSound)
@@ -735,12 +793,6 @@ void ACollapseDirector::EndDialogue()
 	if (APlayerController* PC = UGameplayStatics::GetPlayerController(this, 0))
 	{
 		DisableInput(PC);
-	}
-
-	// Replaces the open caption with a copy that expires almost immediately (ShowCaption has no "hide").
-	if (PrologueDialogue.IsValidIndex(DialogueIndex))
-	{
-		ShowCaption(PrologueDialogue[DialogueIndex].Text, 0.05f);
 	}
 
 	DialogueIndex = INDEX_NONE;

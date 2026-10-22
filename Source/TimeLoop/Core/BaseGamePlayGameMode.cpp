@@ -49,19 +49,11 @@ void ABaseGamePlayGameMode::StartPlayGame()
 {
 	PreStartGame();
 
-	const int32 LoopCount = TLGameState ? TLGameState->GetLoopCount() : 0;
-	if (LoopCount == 0)
+	if (TLGameState)
 	{
-		if (TLGameState)
-		{
-			TLGameState->StartPrologue();
-		}
-		SetCurrentLoopState(ELoopState::Inactive);
+		TLGameState->StartPrologue();
 	}
-	else
-	{
-		StartLoop();
-	}
+	SetCurrentLoopState(ELoopState::Inactive);
 }
 
 void ABaseGamePlayGameMode::PreStartGame()
@@ -109,10 +101,18 @@ void ABaseGamePlayGameMode::TriggerLoopFailure(ECollapseEndResult InEndResult)
 	EndResult = InEndResult;
 	SetCurrentLoopState(ELoopState::Failed);
 
+	APlayerController *PC = UGameplayStatics::GetPlayerController(this, 0);
+	if (PC)
+	{
+		PC->SetIgnoreMoveInput(true);
+		PC->SetIgnoreLookInput(true);
+	}
+
 	GetWorldTimerManager().ClearTimer(LoopTimerHandle);
 	OnLoopFailed.Broadcast();
 
-	GetWorldTimerManager().SetTimer(LoopTimerHandle, this, &ABaseGamePlayGameMode::ResetLoop, FMath::Max(FailureResetDelay, 0.01f), false);
+	// Will reset with UI (Retry button)
+	// GetWorldTimerManager().SetTimer(LoopTimerHandle, this, &ABaseGamePlayGameMode::ResetLoop, FMath::Max(FailureResetDelay, 0.01f), false);
 }
 
 void ABaseGamePlayGameMode::TriggerLoopSuccess()
@@ -126,6 +126,13 @@ void ABaseGamePlayGameMode::TriggerLoopSuccess()
 		TLGameState->SetLevelCompleted(true);
 	}
 
+	APlayerController *PC = UGameplayStatics::GetPlayerController(this, 0);
+	if (PC)
+	{
+		PC->SetIgnoreMoveInput(true);
+		PC->SetIgnoreLookInput(true);
+	}
+
 	OnLoopSucceeded.Broadcast();
 }
 
@@ -133,15 +140,25 @@ void ABaseGamePlayGameMode::ResetLoop()
 {
 	UE_LOG(LogTemp, Warning, TEXT("[GameMode] ResetLoop started. Resetting loop timer and notifying resetables..."));
 
+	SetCurrentLoopState(ELoopState::Inactive);
+
 	TimeRemaining = MaxLoopDuration;
 	OnUpdateTimer.Broadcast(TimeRemaining);
 
 	if (TLGameState)
 	{
 		TLGameState->IncrementLoopCount();
+		TLGameState->StartPrologue();
 	}
 
-	// 1. Reset all actors implementing BPI_LoopResetable
+	APlayerController *PC = UGameplayStatics::GetPlayerController(this, 0);
+	if (PC)
+	{
+		PC->SetIgnoreMoveInput(false);
+		PC->SetIgnoreLookInput(false);
+	}
+
+	// Reset all actors implementing BPI_LoopResetable
 	if (UClass* InterfaceClass = StaticLoadClass(UInterface::StaticClass(), nullptr, TEXT("/Game/Core/Interfaces/BPI_LoopResetable.BPI_LoopResetable_C")))
 	{
 		TArray<AActor*> ResetableActors;
@@ -158,19 +175,7 @@ void ABaseGamePlayGameMode::ResetLoop()
 		}
 	}
 
-	// 2. Reset registered resetables
-	for (UObject* Resetable : RegisteredResetables)
-	{
-		if (Resetable)
-		{
-			if (UFunction* ResetFunc = Resetable->FindFunction(TEXT("OnLoopReset")))
-			{
-				Resetable->ProcessEvent(ResetFunc, nullptr);
-			}
-		}
-	}
-
-	// 3. Notify Level Director if present (sets phase to Prologue, resets Maya to drawing, retriggers quake/blackout)
+	// Notify Level Director if present (sets phase to Prologue, resets Maya to drawing, retriggers quake/blackout)
 	if (ACollapseDirector* Director = Cast<ACollapseDirector>(UGameplayStatics::GetActorOfClass(this, ACollapseDirector::StaticClass())))
 	{
 		UE_LOG(LogTemp, Warning, TEXT("[GameMode] Notifying CollapseDirector::ResetState with Result: %d"), static_cast<int32>(EndResult));
@@ -182,14 +187,6 @@ void ABaseGamePlayGameMode::ResetLoop()
 	}
 
 	K2_OnLoopReset();
-}
-
-void ABaseGamePlayGameMode::RegisterResetable(UObject* Resetable)
-{
-	if (Resetable && !RegisteredResetables.Contains(Resetable))
-	{
-		RegisteredResetables.Add(Resetable);
-	}
 }
 
 void ABaseGamePlayGameMode::StartNewGame()

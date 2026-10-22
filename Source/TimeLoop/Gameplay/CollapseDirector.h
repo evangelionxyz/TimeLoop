@@ -15,6 +15,7 @@ class UFPSCameraEffects;
 class UFlashlightEffects;
 class UNiagaraSystem;
 class USoundBase;
+class UAudioComponent;
 
 UENUM(BlueprintType)
 enum class ECollapsePhase : uint8
@@ -247,9 +248,11 @@ public:
 	float DustScatterRadius = 250.0f;
 
 	// --- Audio (all optional) ---
-
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Collapse|Audio")
 	TObjectPtr<USoundBase> RumbleSound;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UAudioComponent> RumbleAudioComponent;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Collapse|Audio")
 	TObjectPtr<USoundBase> StructuralCrackSound;
@@ -267,10 +270,19 @@ public:
 	TObjectPtr<USoundBase> MayaScreamSound;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Collapse|Audio|Maya")
-	TObjectPtr<USoundBase> MayaCryingSound;
+	TObjectPtr<USoundBase> MayaSurprisedSound;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Collapse|Audio|Maya")
-	TObjectPtr<USoundBase> MayaSurprisedSound;
+	TObjectPtr<USoundBase> MayaCryingSound;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UAudioComponent> MayaCryingAudioComponent;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Collapse|Audio|Ethan")
+	TObjectPtr<USoundBase> HearthbeatSound;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UAudioComponent> HearthbeatAudioComponent;
 
 	// --- Prologue dialogue (Maya talks to Ethan, E advances) ---
 

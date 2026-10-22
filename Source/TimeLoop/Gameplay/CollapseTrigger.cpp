@@ -18,6 +18,35 @@ void ACollapseTrigger::BeginPlay()
 {
 	Super::BeginPlay();
 	TriggerBox->OnComponentBeginOverlap.AddDynamic(this, &ACollapseTrigger::OnOverlapBegin);
+
+	if (ACollapseDirector* Director = GetDirector())
+	{
+		Director->OnResetState.AddDynamic(this, &ACollapseTrigger::HandleResetState);
+	}
+}
+
+void ACollapseTrigger::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+	if (CachedDirector)
+	{
+		CachedDirector->OnResetState.RemoveDynamic(this, &ACollapseTrigger::HandleResetState);
+	}
+	Super::EndPlay(EndPlayReason);
+}
+
+void ACollapseTrigger::HandleResetState(const ECollapseEndResult EndResult)
+{
+	ResetTrigger();
+}
+
+void ACollapseTrigger::ResetTrigger()
+{
+	bHasTriggered = false;
+	if (TriggerBox)
+	{
+		TriggerBox->SetCollisionProfileName(TEXT("Trigger"));
+		TriggerBox->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+	}
 }
 
 void ACollapseTrigger::OnOverlapBegin(UPrimitiveComponent *OverlappedComp, AActor *OtherActor, 

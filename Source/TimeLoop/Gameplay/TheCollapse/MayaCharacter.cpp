@@ -39,12 +39,12 @@ void AMayaCharacter::BeginPlay()
 
 	if (Crayon)
 	{
-		CrayonOriginalTransform = Crayon->GetTransform();
+		CrayonInitialTransform = Crayon->GetTransform();
 	}
 
 	if (DrawingPaper)
 	{
-		DrawingPaperOriginalTransform = DrawingPaper->GetTransform();
+		DrawingPaperInitialTransform = DrawingPaper->GetTransform();
 	}
 
 	// Maya first state must be drawing
@@ -383,14 +383,14 @@ void AMayaCharacter::DetachDrawingActors()
 	if (Crayon)
 	{
 		Crayon->DetachFromActor(KeepWorldRules);
-		Crayon->SetActorTransform(CrayonOriginalTransform);
+		Crayon->SetActorTransform(CrayonInitialTransform);
 	}
 
 	if (DrawingPaper)
 	{
 		DrawingPaper->DetachFromActor(KeepWorldRules);
 		DrawingPaper->SetActorEnableCollision(true);
-		DrawingPaper->SetActorTransform(DrawingPaperOriginalTransform);
+		DrawingPaper->SetActorTransform(DrawingPaperInitialTransform);
 	}
 }
 

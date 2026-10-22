@@ -70,13 +70,6 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "TimeLoop|References")
 	TObjectPtr<AHUD> GameHUD = nullptr;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "TimeLoop|Resetables")
-	TArray<TObjectPtr<UObject>> RegisteredResetables;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "TimeLoop|Ghost")
-	TSubclassOf<AActor> GhostEchoCharacterClass = nullptr;
-
-
 	// --- Event Dispatchers ---
 
 	UPROPERTY(BlueprintAssignable, Category = "TimeLoop|Events")
@@ -110,9 +103,6 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "TimeLoop|Flow")
 	virtual void ResetLoop();
-
-	UFUNCTION(BlueprintCallable, Category = "TimeLoop|Resetables")
-	void RegisterResetable(UObject* Resetable);
 
 	UFUNCTION(BlueprintCallable, Category = "TimeLoop|Flow")
 	virtual void StartNewGame();
