@@ -33,6 +33,10 @@ struct TIMELOOP_API FInventoryItem
 	/** Optional key identity. Set this on a key to support doors that require the key. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Inventory")
 	FName PairKeyId = NAME_None;
+
+	/** Optional key identity. Set this on a key to support doors that require the key. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Inventory")
+	bool bIsPersistent = false;
 };
 
 UCLASS(ClassGroup=(TimeLoop), meta=(BlueprintSpawnableComponent))
@@ -45,13 +49,16 @@ public:
 
 	/** Adds an item if ItemId is valid and is not already present. */
 	UFUNCTION(BlueprintCallable, Category = "Inventory")
-	bool AddItem(FName ItemId, EInventoryItemType ItemType, FText DisplayName, FName PairKeyId = NAME_None);
+	bool AddItem(FName ItemId, EInventoryItemType ItemType, FText DisplayName, FName PairKeyId, bool bIsPersistent);
 
 	UFUNCTION(BlueprintCallable, Category = "Inventory")
 	bool RemoveItem(FName ItemId);
 
 	UFUNCTION(BlueprintPure, Category = "Inventory")
 	bool HasItem(FName ItemId) const;
+
+	UFUNCTION(BlueprintCallable, Category = "Inventory")
+	void RemoveNonPersistentItems();
 
 	/** Returns true when the player owns the exact key identity required by a door. */
 	UFUNCTION(BlueprintPure, Category = "Inventory")

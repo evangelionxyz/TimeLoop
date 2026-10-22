@@ -157,6 +157,10 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Collapse|Lights")
 	FName ApartmentLightTag = TEXT("ApartmentLight");
 
+	// Tag for apartment ceiling lights (PointLight actors in the apartment)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Collapse|Lights")
+	FName CeilingLightTag = TEXT("Apt_Ceiling_Light");
+
 	// Lights with this tag buzz during the prologue (Maya's room: "the light keeps buzzing funny")
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Collapse|Lights")
 	FName BuzzLampTag = TEXT("BuzzLamp");
@@ -188,6 +192,15 @@ public:
 	// How long the camera keeps shaking after the blackout before settling
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Collapse|Timing", meta = (ClampMin = "0.0"))
 	float AftershockDuration = 2.0f;
+
+	// Delay in seconds after resetting (post-prologue talk) before re-triggering EnterBlackout / Quake.
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Collapse|Timing", meta = (ClampMin = "0.0"))
+	float ResetBlackoutDelay = 2.0f;
+
+	// If true, resetting the loop re-triggers the earthquake sequence (tremor -> rupture -> blackout -> Maya scream).
+	// If false, it jumps straight to EnterBlackout after ResetBlackoutDelay.
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Collapse|Timing")
+	bool bResetPlaysQuakeSequence = true;
 
 	// --- Camera ---
 
@@ -269,10 +282,6 @@ public:
 	// Key that advances the conversation
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Collapse|Dialogue")
 	FKey DialogueAdvanceKey = EKeys::E;
-
-	// Appended to each caption so the player knows how to continue. Empty = none.
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Collapse|Dialogue")
-	FText ContinuePrompt;
 
 	// Safety timeout passed to the HUD caption for each line (the line is replaced when the player presses the key).
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Collapse|Dialogue", meta = (ClampMin = "1.0"))

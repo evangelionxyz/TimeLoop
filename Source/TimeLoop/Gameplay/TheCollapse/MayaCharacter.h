@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
 #include "MayaState.h"
+#include "CollapseDirector.h"
 #include "Navigation/PathFollowingComponent.h"
 #include "MayaCharacter.generated.h"
 
@@ -65,6 +66,9 @@ public:
 	TObjectPtr<AActor> Drawing_TargetPoint;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Maya|Targets")
+	TObjectPtr<AActor> SitHide_TargetPoint;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Maya|Targets")
 	TObjectPtr<AActor> Shelter_TargetPoint;
 
 	// --- Drawing Setup ---
@@ -103,6 +107,9 @@ protected:
 	UFUNCTION()
 	void HandleCollpaseResetState(const ECollapseEndResult EndResult);
 
+	UFUNCTION()
+	void HandleCollapsePhaseChanged(ECollapsePhase NewPhase);
+
 	ACollapseDirector* GetCollapseDirector();
 	ATimeLoopGameState* GetTimeLoopGameState();
 
@@ -116,4 +123,7 @@ protected:
 	TObjectPtr<ATimeLoopGameState> CachedGameState;
 
 	FDelegateHandle MoveCompleteHandle;
+
+	FTransform CrayonOriginalTransform;
+	FTransform DrawingPaperOriginalTransform;
 };

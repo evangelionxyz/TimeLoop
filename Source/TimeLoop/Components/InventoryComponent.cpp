@@ -7,7 +7,7 @@ UInventoryComponent::UInventoryComponent()
 	PrimaryComponentTick.bCanEverTick = false;
 }
 
-bool UInventoryComponent::AddItem(FName ItemId, EInventoryItemType ItemType, FText DisplayName, FName PairKeyId)
+bool UInventoryComponent::AddItem(FName ItemId, EInventoryItemType ItemType, FText DisplayName, FName PairKeyId, bool bIsPersistent)
 {
 	if (ItemId.IsNone() || HasItem(ItemId))
 	{
@@ -19,6 +19,7 @@ bool UInventoryComponent::AddItem(FName ItemId, EInventoryItemType ItemType, FTe
 	NewItem.ItemType = ItemType;
 	NewItem.DisplayName = MoveTemp(DisplayName);
 	NewItem.PairKeyId = PairKeyId;
+	NewItem.bIsPersistent = bIsPersistent;
 	Items.Add(MoveTemp(NewItem));
 	return true;
 }
@@ -45,6 +46,19 @@ bool UInventoryComponent::RemoveItem(FName ItemId)
 bool UInventoryComponent::HasItem(FName ItemId) const
 {
 	return !ItemId.IsNone() && FindItem(ItemId) != nullptr;
+}
+
+void UInventoryComponent::RemoveNonPersistentItems()
+{
+	const int32 Removed = Items.RemoveAll([](const FInventoryItem& Item)
+	{
+		return !Item.bIsPersistent;
+	});
+
+	if (Removed > 0 && !EquippedItemId.IsNone() && !HasItem(EquippedItemId))
+	{
+		UnequipItem();
+	}
 }
 
 bool UInventoryComponent::HasKeyForDoor(FName RequiredKeyId)

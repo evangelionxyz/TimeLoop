@@ -34,6 +34,17 @@ void AMayaCharacter::BeginPlay()
 		Director->OnDialogueFinished.AddDynamic(this, &AMayaCharacter::HandleDialogueFinished);
 		Director->OnCollapseEvent.AddDynamic(this, &AMayaCharacter::HandleCollapseEvent);
 		Director->OnResetState.AddDynamic(this, &AMayaCharacter::HandleCollpaseResetState);
+		Director->OnCollapsePhaseChanged.AddDynamic(this, &AMayaCharacter::HandleCollapsePhaseChanged);
+	}
+
+	if (Crayon)
+	{
+		CrayonOriginalTransform = Crayon->GetTransform();
+	}
+
+	if (DrawingPaper)
+	{
+		DrawingPaperOriginalTransform = DrawingPaper->GetTransform();
 	}
 
 	// Maya first state must be drawing
@@ -43,7 +54,16 @@ void AMayaCharacter::BeginPlay()
 	}
 	else
 	{
-		SetState(EMayaState::Panicked);
+		// On retry loops, Maya goes back to do her drawing before the blackout re-triggers
+		if (Drawing_TargetPoint)
+		{
+			SetActorLocationAndRotation(Drawing_TargetPoint->GetActorLocation(), Drawing_TargetPoint->GetActorRotation(), false, nullptr, ETeleportType::TeleportPhysics);
+			SetState(EMayaState::Drawing);
+		}
+		else
+		{
+			SetState(EMayaState::MovingToDrawing);
+		}
 	}
 }
 
@@ -54,6 +74,7 @@ void AMayaCharacter::EndPlay(const EEndPlayReason::Type EndPlayReason)
 		CachedDirector->OnDialogueFinished.RemoveDynamic(this, &AMayaCharacter::HandleDialogueFinished);
 		CachedDirector->OnCollapseEvent.RemoveDynamic(this, &AMayaCharacter::HandleCollapseEvent);
 		CachedDirector->OnResetState.RemoveDynamic(this, &AMayaCharacter::HandleCollpaseResetState);
+		CachedDirector->OnCollapsePhaseChanged.RemoveDynamic(this, &AMayaCharacter::HandleCollapsePhaseChanged);
 	}
 
 	Super::EndPlay(EndPlayReason);
@@ -123,6 +144,20 @@ void AMayaCharacter::RunStateLogic()
 		StopMovement();
 		bIsDrawing = false;
 		DetachDrawingActors();
+		if (UCharacterMovementComponent *MoveComp = GetCharacterMovement())
+		{
+			MoveComp->MaxWalkSpeed = 300.0f;
+		}
+		MoveToTarget(SitHide_TargetPoint);
+		break;
+	}
+	case EMayaState::Crying:
+	{
+		StopMovement();
+		if (UCharacterMovementComponent *MoveComp = GetCharacterMovement())
+		{
+			MoveComp->MaxWalkSpeed = 250.0f;
+		}
 		break;
 	}
 	case EMayaState::SeekingShelter:
@@ -161,16 +196,15 @@ void AMayaCharacter::HandleInteraction()
 	{
 	case EMayaState::TalkToEthan:
 	{
-		// We begin the prologue dialogue
-		// And advance the dialogue
-
-		// NOTE:
-		// BeginPrologueDialog will Freeze Player Input
-		// Advance Dialog will Restore Player Input
 		if (ACollapseDirector *director = GetCollapseDirector())
 		{
-			director->BeginPrologueDialogue();
-			director->AdvanceDialogue();
+			// Only start dialogue if not already active.
+			// Once active, CollapseDirector's DialogueAdvanceKey ('E') input binding
+			// advances the lines one-by-one so each key press advances exactly once.
+			if (!director->IsDialogueActive())
+			{
+				director->BeginPrologueDialogue();
+			}
 		}
 		break;
 	}
@@ -221,7 +255,11 @@ void AMayaCharacter::HandleMoveCompleted(FAIRequestID RequestID, const FPathFoll
 		SetState(EMayaState::Drawing);
 		break;
 	}
-
+	case EMayaState::Panicked:
+	{
+		SetState(EMayaState::Crying);
+		break;
+	}
 	case EMayaState::SeekingShelter:
 	{
 		SetState(EMayaState::Sheltered);
@@ -263,10 +301,61 @@ void AMayaCharacter::HandleDialogueFinished()
 	}
 }
 
-
 void AMayaCharacter::HandleCollpaseResetState(const ECollapseEndResult EndResult)
 {
-	SetState(EMayaState::MovingToDrawing);
+	switch (EndResult)
+	{
+	case ECollapseEndResult::Success:
+	{
+		StopMovement();
+		SetState(EMayaState::Saved);
+		break;
+	}
+
+	case ECollapseEndResult::Timeout:
+	case ECollapseEndResult::MayaDied:
+	case ECollapseEndResult::EthanDied:
+	default:
+	{
+		StopMovement();
+
+		// Reset collision / physics if previously impacted
+		if (USkeletalMeshComponent* MeshComp = GetMesh())
+		{
+			MeshComp->SetSimulatePhysics(false);
+		}
+
+		// Maya needs to go back to do her drawing
+		if (Drawing_TargetPoint)
+		{
+			SetActorLocationAndRotation(Drawing_TargetPoint->GetActorLocation(), Drawing_TargetPoint->GetActorRotation(), false, nullptr, ETeleportType::TeleportPhysics);
+			SetState(EMayaState::Drawing);
+		}
+		else
+		{
+			SetState(EMayaState::MovingToDrawing);
+		}
+		break;
+	}
+	}
+}
+
+void AMayaCharacter::HandleCollapsePhaseChanged(ECollapsePhase NewPhase)
+{
+	switch (NewPhase)
+	{
+	case ECollapsePhase::Emergency:
+	{
+		// When the blackout and emergency hits, Maya drops her drawing and panics
+		if (CurrentState == EMayaState::Drawing || CurrentState == EMayaState::MovingToDrawing)
+		{
+			SetState(EMayaState::Panicked);
+		}
+		break;
+	}
+	default:
+		break;
+	}
 }
 
 void AMayaCharacter::AttachDrawingActors()
@@ -299,12 +388,14 @@ void AMayaCharacter::DetachDrawingActors()
 	if (Crayon)
 	{
 		Crayon->DetachFromActor(KeepWorldRules);
+		Crayon->SetActorTransform(CrayonOriginalTransform);
 	}
 
 	if (DrawingPaper)
 	{
 		DrawingPaper->DetachFromActor(KeepWorldRules);
 		DrawingPaper->SetActorEnableCollision(true);
+		DrawingPaper->SetActorTransform(DrawingPaperOriginalTransform);
 	}
 }
 

@@ -17,67 +17,6 @@
 
 DEFINE_LOG_CATEGORY_STATIC(LogCollapse, Log, All);
 
-namespace
-{
-	bool CallBlueprintShowCaption(UObject *Target, const FText &Message, float Duration)
-	{
-		UFunction *Func = Target ? Target->FindFunction(TEXT("ShowCaption")) : nullptr;
-		if (!Func || Func->ParmsSize <= 0)
-		{
-			return false;
-		}
-
-		uint8 *Params = static_cast<uint8 *>(FMemory_Alloca(Func->ParmsSize));
-		FMemory::Memzero(Params, Func->ParmsSize);
-
-		for (TFieldIterator<FProperty> It(Func); It && It->HasAnyPropertyFlags(CPF_Parm); ++It)
-		{
-			It->InitializeValue_InContainer(Params);
-		}
-
-		bool bTextSet = false;
-		for (TFieldIterator<FProperty> It(Func); It && It->HasAnyPropertyFlags(CPF_Parm); ++It)
-		{
-			FProperty *Prop = *It;
-			if (Prop->HasAnyPropertyFlags(CPF_ReturnParm))
-			{
-				continue;
-			}
-
-			if (const FTextProperty *TextProp = CastField<FTextProperty>(Prop))
-			{
-				TextProp->SetPropertyValue_InContainer(Params, Message);
-				bTextSet = true;
-			}
-			else if (const FStrProperty *StrProp = CastField<FStrProperty>(Prop))
-			{
-				StrProp->SetPropertyValue_InContainer(Params, Message.ToString());
-				bTextSet = true;
-			}
-			else if (const FFloatProperty *FloatProp = CastField<FFloatProperty>(Prop))
-			{
-				FloatProp->SetPropertyValue_InContainer(Params, Duration);
-			}
-			else if (const FDoubleProperty *DoubleProp = CastField<FDoubleProperty>(Prop))
-			{
-				DoubleProp->SetPropertyValue_InContainer(Params, Duration);
-			}
-		}
-
-		if (bTextSet)
-		{
-			Target->ProcessEvent(Func, Params);
-		}
-
-		for (TFieldIterator<FProperty> It(Func); It && It->HasAnyPropertyFlags(CPF_Parm); ++It)
-		{
-			It->DestroyValue_InContainer(Params);
-		}
-
-		return bTextSet;
-	}
-}
-
 ACollapseDirector::ACollapseDirector()
 {
 	PrimaryActorTick.bCanEverTick = false;
@@ -90,8 +29,6 @@ ACollapseDirector::ACollapseDirector()
 	QuakeStartLine = NSLOCTEXT("Collapse", "QuakeStart", "What the hell... an earthquake?");
 	MayaScreamLine = NSLOCTEXT("Collapse", "MayaScream", "ETHAN?! THE LIGHTS WENT OUT! SOMETHING CRASHED OUTSIDE! ETHAN, HELP ME!");
 	EmergencyLine = NSLOCTEXT("Collapse", "Emergency", "The power's out! I need to grab the flashlight and get down to Maya!");
-
-	ContinuePrompt = NSLOCTEXT("Collapse", "ContinuePrompt", "[E] Continue");
 
 	auto MakeLine = [](const FText& Speaker, const FText& Text, FName EventId = NAME_None)
 	{
@@ -113,12 +50,14 @@ ACollapseDirector::ACollapseDirector()
 		MakeLine(Ethan, NSLOCTEXT("Collapse", "P4", "Anything for my little sister. Go on, don't let me keep you from your drawing.")),
 		MakeLine(Maya, NSLOCTEXT("Collapse", "P5", "Okay! I'll finish it before dinner. Bye, Ethan!")),
 	};
+
 }
 
 void ACollapseDirector::BeginPlay()
 {
 	Super::BeginPlay();
 
+	SetUnlockedState(false);
 	if (bAutoStartPrologue)
 	{
 		// Next tick so the GameState has finished syncing the loop count from the GameInstance.
@@ -193,44 +132,86 @@ void ACollapseDirector::StartFlow()
 	OnCollapsePhaseChanged.Broadcast(ECollapsePhase::Prologue);
 }
 
-void ACollapseDirector::ResetState(ECollapseEndResult EndResult)
+void ACollapseDirector::ResetState(const ECollapseEndResult EndResult)
 {
+	FTimerManager& TimerManager = GetWorldTimerManager();
+	TimerManager.ClearTimer(PrologueTimeoutHandle);
+	TimerManager.ClearTimer(PhaseHandle);
+	TimerManager.ClearTimer(EffectsHandle);
+	TimerManager.ClearTimer(PropHandle);
+	TimerManager.ClearTimer(StutterHandle);
+	TimerManager.ClearTimer(AftershockHandle);
+	TimerManager.ClearTimer(MayaDrawingHandle);
+
 	RestorePlayerControl();
 	RestoreShaking();
-	SetAllLights(EApartmentLightMode::Normal);
-	CurrentPhase = ECollapsePhase::Prologue;
-	bDialogueFinished = true;
 
-	// Stop Sounds
-	if (StructuralCrackSound)
+	switch (EndResult)
 	{
+	case ECollapseEndResult::Success:
+	{
+		if (ATimeLoopGameState* GameState = GetTimeLoopGameState())
+		{
+			GameState->SetObjectiveSolved(true);
+		}
+		OnResetState.Broadcast(EndResult);
+		break;
 	}
 
-	if (RumbleSound)
+	case ECollapseEndResult::Timeout:
+	case ECollapseEndResult::MayaDied:
+	case ECollapseEndResult::EthanDied:
+	default:
 	{
-	}
+		UE_LOG(LogCollapse, Warning, TEXT("[Director] ResetState executed (Result: %d). Restoring apartment lights to Normal, locking items, setting phase to Prologue."), static_cast<int32>(EndResult));
 
-	if (SparkSound)
-	{
-	}
+		if (LightActors.IsEmpty())
+		{
+			CollectLights();
+		}
 
-	if (BlackoutPopSound)
-	{
-	}
+		// Restore normal lights in the apartment (before blackout hits again)
+		SetAllLights(EApartmentLightMode::Normal);
 
-	if (MayaScreamSound)
-	{
-	}
+		// Lock items (like Flashlight pickup) until the blackout occurs again
+		SetUnlockedState(false);
 
-	if (MayaCryingSound)
-	{
-	}
+		// Reset to state just after Ethan talked to Maya (Phase: Prologue)
+		CurrentPhase = ECollapsePhase::Prologue;
+		OnCollapsePhaseChanged.Broadcast(ECollapsePhase::Prologue);
+		bDialogueFinished = true;
+		bDialogueActive = false;
+		bDialoguePlayed = true;
 
-	if (MayaSurprisedSound)
-	{
-	}
+		// Notify listeners (e.g. Maya character resets back to her drawing)
+		OnResetState.Broadcast(EndResult);
 
-	OnResetState.Broadcast(EndResult);
+		// Re-trigger the earthquake / blackout sequence and Maya scream line
+		if (ResetBlackoutDelay > 0.0f)
+		{
+			if (bResetPlaysQuakeSequence)
+			{
+				TimerManager.SetTimer(PhaseHandle, this, &ACollapseDirector::TriggerEarthquakeSequence, ResetBlackoutDelay, false);
+			}
+			else
+			{
+				TimerManager.SetTimer(PhaseHandle, this, &ACollapseDirector::EnterBlackout, ResetBlackoutDelay, false);
+			}
+		}
+		else
+		{
+			if (bResetPlaysQuakeSequence)
+			{
+				TriggerEarthquakeSequence();
+			}
+			else
+			{
+				EnterBlackout();
+			}
+		}
+		break;
+	}
+	}
 }
 
 void ACollapseDirector::TriggerEarthquakeSequence()
@@ -356,6 +337,7 @@ void ACollapseDirector::EnterBlackout()
 	{
 		UGameplayStatics::PlaySound2D(this, MayaScreamSound);
 	}
+
 	ShowCaption(MayaScreamLine, 4.0f);
 
 	SetUnlockedState(true);
@@ -378,6 +360,8 @@ void ACollapseDirector::ApplyPostBlackoutState()
 		bFlowStarted = true;
 		CollectLights();
 	}
+
+	ResetState(ECollapseEndResult::Timeout);
 }
 
 void ACollapseDirector::TriggerCeilingCollapse()
@@ -524,7 +508,7 @@ void ACollapseDirector::CollectLights()
 		}
 	}
 
-	for (const FName& Tag : { ApartmentLightTag, BuzzLampTag, StutterLampTag })
+	for (const FName& Tag : { ApartmentLightTag, CeilingLightTag, BuzzLampTag, StutterLampTag })
 	{
 		if (Tag.IsNone())
 		{
@@ -649,27 +633,6 @@ void ACollapseDirector::ShowCaption(const FText& Message, float Duration)
 		return;
 	}
 
-	if (const APlayerController* PC = UGameplayStatics::GetPlayerController(this, 0))
-	{
-		if (AHUD* HUD = PC->GetHUD())
-		{
-			bool bShown = CallBlueprintShowCaption(HUD, Message, Duration);
-
-			if (!bShown)
-			{
-				if (const FObjectProperty* ControllerProp = FindFProperty<FObjectProperty>(HUD->GetClass(), TEXT("HUDController")))
-				{
-					bShown = CallBlueprintShowCaption(ControllerProp->GetObjectPropertyValue_InContainer(HUD), Message, Duration);
-				}
-			}
-
-			if (!bShown)
-			{
-				UE_LOG(LogCollapse, Verbose, TEXT("No ShowCaption function found on the HUD; relying on OnCollapseCaption."));
-			}
-		}
-	}
-
 	OnCollapseCaption.Broadcast(Message, Duration);
 }
 
@@ -747,10 +710,6 @@ void ACollapseDirector::ShowDialogueLine(int32 Index)
 	if (!Line.Speaker.IsEmpty())
 	{
 		Caption = FText::Format(NSLOCTEXT("Collapse", "DialogueFormat", "{0}: {1}"), Line.Speaker, Line.Text);
-	}
-	if (!ContinuePrompt.IsEmpty())
-	{
-		Caption = FText::Format(NSLOCTEXT("Collapse", "DialoguePromptFormat", "{0}\n{1}"), Caption, ContinuePrompt);
 	}
 
 	ShowCaption(Caption, DialogueLineTimeout);

@@ -52,7 +52,8 @@ enum class EMayaState : uint8
 
 	// Disaster / Quake Reaction
 	Startled            UMETA(DisplayName = "Startled (Initial Tremor)"),
-	Panicked            UMETA(DisplayName = "Panicked (Crying on Floor)"),
+	Panicked            UMETA(DisplayName = "Panicked (Running on To Find Safe Place)"),
+	Crying              UMETA(DisplayName = "Crying (Crying on Floor)"),
 
 	// Puzzle / Loop Resolution
 	SeekingShelter      UMETA(DisplayName = "Seeking Shelter (Running)"),

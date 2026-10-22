@@ -20,7 +20,8 @@ void ACollapseTrigger::BeginPlay()
 	TriggerBox->OnComponentBeginOverlap.AddDynamic(this, &ACollapseTrigger::OnOverlapBegin);
 }
 
-void ACollapseTrigger::OnOverlapBegin(UPrimitiveComponent *OverlappedComp, AActor *OtherActor, UPrimitiveComponent *OtherComp, int32 OtherBodyIndex, bool bFromWeep, const FHitResult &SweepResult)
+void ACollapseTrigger::OnOverlapBegin(UPrimitiveComponent *OverlappedComp, AActor *OtherActor, 
+	UPrimitiveComponent *OtherComp, int32 OtherBodyIndex, bool bFromWeep, const FHitResult &SweepResult)
 {
 	if (bHasTriggered && bTriggerOnce)
 	{
