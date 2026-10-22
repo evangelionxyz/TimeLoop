@@ -279,10 +279,6 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Collapse|Dialogue")
 	TArray<FDialogueLine> PrologueDialogue;
 
-	// Key that advances the conversation
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Collapse|Dialogue")
-	FKey DialogueAdvanceKey = EKeys::E;
-
 	// Safety timeout passed to the HUD caption for each line (the line is replaced when the player presses the key).
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Collapse|Dialogue", meta = (ClampMin = "1.0"))
 	float DialogueLineTimeout = 60.0f;

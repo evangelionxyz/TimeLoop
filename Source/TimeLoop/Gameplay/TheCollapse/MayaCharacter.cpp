@@ -198,13 +198,8 @@ void AMayaCharacter::HandleInteraction()
 	{
 		if (ACollapseDirector *director = GetCollapseDirector())
 		{
-			// Only start dialogue if not already active.
-			// Once active, CollapseDirector's DialogueAdvanceKey ('E') input binding
-			// advances the lines one-by-one so each key press advances exactly once.
-			if (!director->IsDialogueActive())
-			{
-				director->BeginPrologueDialogue();
-			}
+			director->AdvanceDialogue();
+			director->BeginPrologueDialogue();
 		}
 		break;
 	}

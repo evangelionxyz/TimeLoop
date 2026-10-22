@@ -659,11 +659,6 @@ void ACollapseDirector::BeginPrologueDialogue()
 	const bool bHadInput = InputComponent != nullptr;
 	EnableInput(PC);
 
-	if (InputComponent && !bHadInput)
-	{
-		InputComponent->BindKey(DialogueAdvanceKey, IE_Pressed, this, &ACollapseDirector::AdvanceDialogue);
-	}
-
 	if (bFreezePlayerDuringDialogue)
 	{
 		PC->SetIgnoreMoveInput(true);
