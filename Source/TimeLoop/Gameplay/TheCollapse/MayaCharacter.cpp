@@ -154,6 +154,9 @@ void AMayaCharacter::RunStateLogic()
 	case EMayaState::Crying:
 	{
 		StopMovement();
+		FRotator Rotation = GetActorRotation();
+		Rotation.Yaw = SitHide_TargetPoint->GetActorRotation().Yaw;
+		SetActorRotation(Rotation);
 		if (UCharacterMovementComponent *MoveComp = GetCharacterMovement())
 		{
 			MoveComp->MaxWalkSpeed = 250.0f;
@@ -169,6 +172,11 @@ void AMayaCharacter::RunStateLogic()
 	case EMayaState::Sheltered:
 	{
 		StopMovement();
+
+		FRotator Rotation = GetActorRotation();
+		Rotation.Yaw = SitHide_TargetPoint->GetActorRotation().Yaw;
+		SetActorRotation(Rotation);
+
 		if (ATimeLoopGameState* GS = GetTimeLoopGameState())
 		{
 			GS->SetObjectiveSolved(true);
