@@ -85,6 +85,22 @@ public:
 	UFUNCTION(BlueprintPure, Category = "TimeLoop|Settings")
 	FString GetCurrentVSyncLabel() const;
 
+	// Ambil brightness saat ini, dalam skala 0-100 (gampang ditampilin di UI)
+	UFUNCTION(BlueprintPure, Category = "TimeLoop|Settings")
+	float GetCurrentBrightness() const;
+
+	// Ubah brightness (belum langsung ke-apply, harus panggil ApplySettings dulu)
+	UFUNCTION(BlueprintCallable, Category = "TimeLoop|Settings")
+	void SetBrightness(float NewBrightness) const;
+
+	// Geser brightness naik/turun sejumlah BrightnessStep, dipanggil dari tombol < >
+	UFUNCTION(BlueprintCallable, Category = "TimeLoop|Settings")
+	void CycleBrightness(const bool bIncrement);
+
+	// Label buat ditampilin di UI, misal "80%"
+	UFUNCTION(BlueprintPure, Category = "TimeLoop|Settings")
+	FString GetCurrentBrightnessLabel() const;
+
 	// Simpan & apply semua perubahan settings. Panggil ini pas user klik tombol "Apply".
 	UFUNCTION(BlueprintCallable, Category = "TimeLoop|Settings")
 	void ApplySettings();
@@ -104,4 +120,12 @@ protected:
 	TObjectPtr<UGameUserSettings> CachedSettings;
 
 	TArray<FIntPoint> Resolutions;
+
+	// Step kenaikan/penurunan brightness tiap klik < atau >, dalam skala 0-100
+	UPROPERTY(EditDefaultsOnly, Category = "TimeLoop|Settings")
+	float BrightnessStep = 10.0f;
+
+	// Batas gamma asli Unreal yang dipetakan ke skala 0-100 UI
+	const float MinGamma = 1.0f;
+	const float MaxGamma = 3.4f;
 };
