@@ -162,5 +162,8 @@ void USettingsMenuWidget::ApplySettings()
 
 void USettingsMenuWidget::RevertSettings()
 {
-	CachedSettings->LoadSettings(true);
+	if (CachedSettings)
+	{
+		CachedSettings->LoadSettings(true);
+	}
 }
