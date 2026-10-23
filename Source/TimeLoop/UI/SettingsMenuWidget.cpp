@@ -2,6 +2,8 @@
 
 #include "SettingsMenuWidget.h"
 #include "Kismet/KismetSystemLibrary.h"
+#include "HAL/IConsoleManager.h"
+#include "Engine/Engine.h"
 
 void USettingsMenuWidget::PopulateSettings()
 {
@@ -114,6 +116,35 @@ void USettingsMenuWidget::SetVSyncEnabled(const bool bEnabled) const
 FString USettingsMenuWidget::GetCurrentVSyncLabel() const
 {
 	return CachedSettings->IsVSyncEnabled() ? TEXT("ON") : TEXT("OFF");
+}
+
+float USettingsMenuWidget::GetCurrentBrightness() const
+{
+	if (!GEngine) return 50.0f;
+
+	const float Gamma = GEngine->DisplayGamma;
+	return FMath::GetMappedRangeValueClamped(FVector2D(MinGamma, MaxGamma), FVector2D(0.0f, 100.0f), Gamma);
+}
+
+void USettingsMenuWidget::SetBrightness(const float NewBrightness) const
+{
+	if (!GEngine) return;
+
+	const float ClampedBrightness = FMath::Clamp(NewBrightness, 0.0f, 100.0f);
+	const float Gamma = FMath::GetMappedRangeValueClamped(FVector2D(0.0f, 100.0f), FVector2D(MinGamma, MaxGamma), ClampedBrightness);
+	GEngine->DisplayGamma = Gamma;
+}
+
+void USettingsMenuWidget::CycleBrightness(const bool bIncrement)
+{
+	const float CurrentBrightness = GetCurrentBrightness();
+	const float NewBrightness = FMath::Clamp(bIncrement ? CurrentBrightness + BrightnessStep : CurrentBrightness - BrightnessStep, 0.0f, 100.0f);
+	SetBrightness(NewBrightness);
+}
+
+FString USettingsMenuWidget::GetCurrentBrightnessLabel() const
+{
+	return FString::Printf(TEXT("%d%%"), FMath::RoundToInt(GetCurrentBrightness()));
 }
 
 void USettingsMenuWidget::ApplySettings()
