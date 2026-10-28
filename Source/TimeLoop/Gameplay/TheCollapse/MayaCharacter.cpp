@@ -185,7 +185,7 @@ void AMayaCharacter::RunStateLogic()
 
 		FRotator Rotation = GetActorRotation();
 		Rotation.Yaw = Shelter_TargetPoint->GetActorRotation().Yaw;
-		SetActorLocationAndRotation(SitHide_TargetPoint->GetActorLocation(), Rotation);
+		SetActorLocationAndRotation(Shelter_TargetPoint->GetActorLocation(), Rotation);
 		if (ATimeLoopGameState* GS = GetTimeLoopGameState())
 		{
 			GS->SetObjectiveSolved(true);
