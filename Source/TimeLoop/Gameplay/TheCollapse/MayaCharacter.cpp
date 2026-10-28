@@ -34,7 +34,7 @@ void AMayaCharacter::BeginPlay()
 	{
 		Director->OnDialogueFinished.AddDynamic(this, &AMayaCharacter::HandleDialogueFinished);
 		Director->OnCollapseEvent.AddDynamic(this, &AMayaCharacter::HandleCollapseEvent);
-		Director->OnResetState.AddDynamic(this, &AMayaCharacter::HandleCollpaseResetState);
+		Director->OnResetState.AddDynamic(this, &AMayaCharacter::HandleCollapseResetState);
 		Director->OnCollapsePhaseChanged.AddDynamic(this, &AMayaCharacter::HandleCollapsePhaseChanged);
 	}
 
@@ -74,7 +74,7 @@ void AMayaCharacter::EndPlay(const EEndPlayReason::Type EndPlayReason)
 	{
 		CachedDirector->OnDialogueFinished.RemoveDynamic(this, &AMayaCharacter::HandleDialogueFinished);
 		CachedDirector->OnCollapseEvent.RemoveDynamic(this, &AMayaCharacter::HandleCollapseEvent);
-		CachedDirector->OnResetState.RemoveDynamic(this, &AMayaCharacter::HandleCollpaseResetState);
+		CachedDirector->OnResetState.RemoveDynamic(this, &AMayaCharacter::HandleCollapseResetState);
 		CachedDirector->OnCollapsePhaseChanged.RemoveDynamic(this, &AMayaCharacter::HandleCollapsePhaseChanged);
 	}
 
@@ -333,7 +333,7 @@ void AMayaCharacter::HandleDialogueFinished()
 	}
 }
 
-void AMayaCharacter::HandleCollpaseResetState(const ECollapseEndResult EndResult)
+void AMayaCharacter::HandleCollapseResetState(const ECollapseEndResult EndResult)
 {
 	// Stop sounds
 	if (MayaCryingAudioComponent && MayaCryingAudioComponent->IsPlaying())

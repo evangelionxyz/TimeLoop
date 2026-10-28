@@ -119,7 +119,7 @@ protected:
 	void HandleDialogueFinished();
 
 	UFUNCTION()
-	void HandleCollpaseResetState(const ECollapseEndResult EndResult);
+	void HandleCollapseResetState(const ECollapseEndResult EndResult);
 
 	UFUNCTION()
 	void HandleCollapsePhaseChanged(ECollapsePhase NewPhase);
