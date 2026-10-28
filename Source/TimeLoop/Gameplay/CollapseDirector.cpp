@@ -4,6 +4,7 @@
 #include "ApartmentLightController.h"
 #include "FPSCameraEffects.h"
 #include "FlashlightEffects.h"
+#include "MayaCharacter.h"
 #include "TimeLoopGameState.h"
 #include "Components/PrimitiveComponent.h"
 #include "Components/SceneComponent.h"
@@ -45,11 +46,11 @@ ACollapseDirector::ACollapseDirector()
 	
 	PrologueDialogue =
 	{
-		MakeLine(Maya, NSLOCTEXT("Collapse", "P1", "Ethan! You came!")),
+		MakeLine(Maya, NSLOCTEXT("Collapse", "P1", "Ethan!")),
 		MakeLine(Ethan, NSLOCTEXT("Collapse", "P2", "Happy birthday, Maya. I got you something."), TEXT("GiveGift")),
 		MakeLine(Maya, NSLOCTEXT("Collapse", "P3", "You didn't have to... Thank you, I love it!")),
 		MakeLine(Ethan, NSLOCTEXT("Collapse", "P4", "Anything for my little sister. Go on, don't let me keep you from your drawing.")),
-		MakeLine(Maya, NSLOCTEXT("Collapse", "P5", "Okay! I'll finish it before dinner. Bye, Ethan!")),
+		MakeLine(Maya, NSLOCTEXT("Collapse", "P5", "Okay! I'll finish it before dinner. Bye!")),
 	};
 
 }
@@ -82,7 +83,7 @@ void ACollapseDirector::EndPlay(const EEndPlayReason::Type EndPlayReason)
 		RestorePlayerControl();
 
 		// Don't leave the quake's shake parameters on the player if the director goes away mid-sequence.
-		RestoreShaking();
+		RestoreShaking(true);
 	}
 
 	Super::EndPlay(EndPlayReason);
@@ -144,19 +145,18 @@ void ACollapseDirector::ResetState(const ECollapseEndResult EndResult)
 	TimerManager.ClearTimer(AftershockHandle);
 	TimerManager.ClearTimer(MayaDrawingHandle);
 
-	// Stop sound
-	if (MayaCryingAudioComponent && MayaCryingAudioComponent->IsPlaying())
-	{
-		MayaCryingAudioComponent->Stop();
-	}
-
 	if (RumbleAudioComponent && RumbleAudioComponent->IsPlaying())
 	{
 		RumbleAudioComponent->Stop();
 	}
 
+	if (BacksoundAudioComponent && BacksoundAudioComponent->IsPlaying())
+	{
+		BacksoundAudioComponent->Stop();
+	}
+
 	RestorePlayerControl();
-	RestoreShaking();
+	RestoreShaking(true);
 
 	switch (EndResult)
 	{
@@ -202,33 +202,6 @@ void ACollapseDirector::ResetState(const ECollapseEndResult EndResult)
 
 		// Notify listeners (e.g. Maya character resets back to her drawing)
 		OnResetState.Broadcast(EndResult);
-
-		// NOTE: THESE TWO FUNCTION CAN ONLY BE TRIGGERED BY TRIGGERS NOT MANUALLY BY TIMER
-#if 0
-		// Re-trigger the earthquake / blackout sequence and Maya scream line
-		if (ResetBlackoutDelay > 0.0f)
-		{
-			if (bResetPlaysQuakeSequence)
-			{
-				TimerManager.SetTimer(PhaseHandle, this, &ACollapseDirector::TriggerEarthquakeSequence, ResetBlackoutDelay, false);
-			}
-			else
-			{
-				TimerManager.SetTimer(PhaseHandle, this, &ACollapseDirector::EnterBlackout, ResetBlackoutDelay, false);
-			}
-		}
-		else
-		{
-			if (bResetPlaysQuakeSequence)
-			{
-				TriggerEarthquakeSequence();
-			}
-			else
-			{
-				EnterBlackout();
-			}
-		}
-#endif
 		break;
 	}
 	}
@@ -285,7 +258,7 @@ void ACollapseDirector::EnterInitialTremor()
 
 	if (UFPSCameraEffects* Camera = GetPlayerCameraEffects())
 	{
-		Camera->PlayEarthQuakeShake(InitialTremorDuration, InitialTremorIntensity);
+		Camera->PlayEarthQuakeShake(InitialTremorDuration, InitialTremorIntensity, InitialTremorFadeOutDuration);
 	}
 
 	if (RumbleSound)
@@ -308,7 +281,7 @@ void ACollapseDirector::EnterInitialTremor()
 		HearthbeatAudioComponent = UGameplayStatics::SpawnSound2D(this, HearthbeatSound);
 	}
 
-	ShowCaption(QuakeStartLine, InitialTremorDuration);
+	ShowCaption(QuakeStartLine, InitialTremorDuration, FText::GetEmpty());
 
 	FTimerManager& TimerManager = GetWorldTimerManager();
 	TimerManager.SetTimer(PropHandle, this, &ACollapseDirector::PropJitterTick, 0.2f, true);
@@ -327,7 +300,7 @@ void ACollapseDirector::EnterRupture()
 			bShakeSaved = true;
 		}
 		Camera->SetShakingParameters(RuptureShakeParameters.X, RuptureShakeParameters.Y, RuptureShakeParameters.Z, RuptureShakeParameters.W);
-		Camera->PlayEarthQuakeShake(RuptureDuration + AftershockDuration, RuptureIntensity);
+		Camera->PlayEarthQuakeShake(RuptureDuration + AftershockDuration, RuptureIntensity, AftershockDuration);
 	}
 
 	if (UFlashlightEffects* Flashlight = GetPlayerFlashlight())
@@ -368,16 +341,17 @@ void ACollapseDirector::EnterBlackout()
 		UGameplayStatics::PlaySound2D(this, BlackoutPopSound);
 	}
 
-	if (MayaScreamSound)
+	if (AMayaCharacter *MayaCharacter = Cast<AMayaCharacter>(UGameplayStatics::GetActorOfClass(this, AMayaCharacter::StaticClass())))
 	{
-		UGameplayStatics::PlaySound2D(this, MayaScreamSound);
+		MayaCharacter->PlayScreamSound();
 	}
 
-	ShowCaption(MayaScreamLine, 4.0f);
+	ShowCaption(MayaScreamLine, 4.0f, FText::GetEmpty());
 
 	SetUnlockedState(true);
+	RestoreShaking(false);
 
-	TimerManager.SetTimer(AftershockHandle, this, &ACollapseDirector::RestoreShaking, FMath::Max(AftershockDuration, 0.01f), false);
+	TimerManager.SetTimer(AftershockHandle, this, &ACollapseDirector::OnAftershockFinished, FMath::Max(AftershockDuration, 0.01f), false);
 	TimerManager.SetTimer(StutterHandle, this, &ACollapseDirector::StartStutterLamps, FMath::Max(StutterStartDelay, 0.01f), false);
 	TimerManager.SetTimer(PhaseHandle, this, &ACollapseDirector::EnterEmergency, FMath::Max(EmergencyDelay, 0.01f), false);
 }
@@ -385,15 +359,6 @@ void ACollapseDirector::EnterBlackout()
 void ACollapseDirector::EnterEmergency()
 {
 	EnterPhase(ECollapsePhase::Emergency);
-
-	if (MayaCryingSound)
-	{
-		if (MayaCryingAudioComponent && MayaCryingAudioComponent->IsPlaying())
-		{
-			MayaCryingAudioComponent->Stop();
-		}
-		MayaCryingAudioComponent = UGameplayStatics::SpawnSound2D(this, MayaCryingSound);
-	}
 
 	// Stop Hearth Beat
 	if (HearthbeatSound)
@@ -404,7 +369,17 @@ void ACollapseDirector::EnterEmergency()
 		}
 	}
 
-	ShowCaption(EmergencyLine, 5.0f);
+	if (Backsound)
+	{
+		if (BacksoundAudioComponent && BacksoundAudioComponent->IsPlaying())
+		{
+			BacksoundAudioComponent->Stop();
+		}
+
+		BacksoundAudioComponent = UGameplayStatics::SpawnSound2D(this, Backsound);
+	}
+
+	ShowCaption(EmergencyLine, 5.0f, FText::GetEmpty());
 }
 
 void ACollapseDirector::ApplyPostBlackoutState()
@@ -436,7 +411,7 @@ void ACollapseDirector::PlaySecondaryTremor()
 {
 	if (UFPSCameraEffects* Camera = GetPlayerCameraEffects())
 	{
-		Camera->PlayEarthQuakeShake(SecondaryTremorDuration, SecondaryTremorIntensity);
+		Camera->PlayEarthQuakeShake(SecondaryTremorDuration, SecondaryTremorIntensity, SecondaryTremorFadeOutDuration);
 	}
 
 	if (RumbleSound)
@@ -527,18 +502,43 @@ void ACollapseDirector::SpawnDustBurst()
 	}
 }
 
-void ACollapseDirector::RestoreShaking()
+void ACollapseDirector::RestoreShaking(bool bImmediate)
 {
-	if (!bShakeSaved)
-	{
-		return;
-	}
-	bShakeSaved = false;
-
 	if (UFPSCameraEffects* Camera = GetPlayerCameraEffects())
 	{
-		Camera->SetShakingParameters(SavedShake[0], SavedShake[1], SavedShake[2], SavedShake[3]);
+		if (bImmediate)
+		{
+			Camera->StopEarthQuakeShake(0.0f);
+			if (bShakeSaved)
+			{
+				bShakeSaved = false;
+				Camera->SetShakingParameters(SavedShake[0], SavedShake[1], SavedShake[2], SavedShake[3]);
+			}
+			return;
+		}
+
+		if (bShakeSaved)
+		{
+			if (AftershockDuration > 0.0f)
+			{
+				Camera->FadeShakingParameters(SavedShake[0], SavedShake[1], SavedShake[2], SavedShake[3], AftershockDuration);
+			}
+			else
+			{
+				Camera->SetShakingParameters(SavedShake[0], SavedShake[1], SavedShake[2], SavedShake[3]);
+				bShakeSaved = false;
+			}
+		}
 	}
+	else if (bImmediate)
+	{
+		bShakeSaved = false;
+	}
+}
+
+void ACollapseDirector::OnAftershockFinished()
+{
+	bShakeSaved = false;
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -684,14 +684,14 @@ void ACollapseDirector::SetUnlockedState(bool bUnlocked)
 	}
 }
 
-void ACollapseDirector::ShowCaption(const FText& Message, float Duration)
+void ACollapseDirector::ShowCaption(const FText& Message, float Duration, const FText& AdvanceKeyText)
 {
 	if (Message.IsEmpty())
 	{
 		return;
 	}
 
-	OnCollapseCaption.Broadcast(Message, Duration);
+	OnCollapseCaption.Broadcast(Message, Duration, AdvanceKeyText);
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -765,11 +765,11 @@ void ACollapseDirector::ShowDialogueLine(int32 Index)
 		Caption = FText::Format(NSLOCTEXT("Collapse", "DialogueFormat", "{0}: {1}"), Line.Speaker, Line.Text);
 	}
 
-	ShowCaption(Caption, DialogueLineTimeout);
+	ShowCaption(Caption, DialogueLineTimeout, NSLOCTEXT("Collapse", "DialogueAdvance", "[E] Continue"));
 
 	OnDialogueLine.Broadcast(Line.Speaker, Line.Text, Index);
 
-	if (MayaSurprisedSound && DialogueIndex == 1)
+	if (MayaSurprisedSound && DialogueIndex == 2)
 	{
 		UGameplayStatics::PlaySound2D(this, MayaSurprisedSound);
 	}

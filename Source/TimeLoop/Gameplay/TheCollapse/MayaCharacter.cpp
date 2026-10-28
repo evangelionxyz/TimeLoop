@@ -6,6 +6,7 @@
 #include "TimeLoopGameState.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Kismet/GameplayStatics.h"
+#include "Components/AudioComponent.h"
 
 AMayaCharacter::AMayaCharacter()
 {
@@ -144,6 +145,7 @@ void AMayaCharacter::RunStateLogic()
 		StopMovement();
 		bIsDrawing = false;
 		DetachDrawingActors();
+
 		if (UCharacterMovementComponent *MoveComp = GetCharacterMovement())
 		{
 			MoveComp->MaxWalkSpeed = 300.0f;
@@ -154,6 +156,9 @@ void AMayaCharacter::RunStateLogic()
 	case EMayaState::Crying:
 	{
 		StopMovement();
+		bIsDrawing = false;
+		DetachDrawingActors();
+
 		FRotator Rotation = GetActorRotation();
 		Rotation.Yaw = SitHide_TargetPoint->GetActorRotation().Yaw;
 		SetActorRotation(Rotation);
@@ -166,17 +171,21 @@ void AMayaCharacter::RunStateLogic()
 	case EMayaState::SeekingShelter:
 	{
 		StopMovement();
+		bIsDrawing = false;
+		DetachDrawingActors();
+
 		MoveToTarget(Shelter_TargetPoint);
 		break;
 	}
 	case EMayaState::Sheltered:
 	{
 		StopMovement();
+		bIsDrawing = false;
+		DetachDrawingActors();
 
 		FRotator Rotation = GetActorRotation();
-		Rotation.Yaw = SitHide_TargetPoint->GetActorRotation().Yaw;
-		SetActorRotation(Rotation);
-
+		Rotation.Yaw = Shelter_TargetPoint->GetActorRotation().Yaw;
+		SetActorLocationAndRotation(SitHide_TargetPoint->GetActorLocation(), Rotation);
 		if (ATimeLoopGameState* GS = GetTimeLoopGameState())
 		{
 			GS->SetObjectiveSolved(true);
@@ -186,10 +195,17 @@ void AMayaCharacter::RunStateLogic()
 	case EMayaState::Crushed:
 	{
 		StopMovement();
+		bIsDrawing = false;
+		DetachDrawingActors();
+
 		break;
 	}
 	case EMayaState::Saved:
 	{
+		if (ATimeLoopGameState* GS = GetTimeLoopGameState())
+		{
+			GS->SetObjectiveSolved(true);
+		}
 		break;
 	}
 
@@ -239,6 +255,14 @@ void AMayaCharacter::StopMovement()
 	}
 }
 
+void AMayaCharacter::PlayScreamSound()
+{
+	if (MayaScreamSound)
+	{
+		UGameplayStatics::PlaySoundAtLocation(this, MayaScreamSound, GetActorLocation());
+	}
+}
+
 void AMayaCharacter::HandleMoveCompleted(FAIRequestID RequestID, const FPathFollowingResult& Result)
 {
 	if (!Result.IsSuccess())
@@ -266,6 +290,11 @@ void AMayaCharacter::HandleMoveCompleted(FAIRequestID RequestID, const FPathFoll
 	case EMayaState::SeekingShelter:
 	{
 		SetState(EMayaState::Sheltered);
+		break;
+	}
+	case EMayaState::Sheltered:
+	{
+		SetState(EMayaState::Saved);
 		break;
 	}
 	default:
@@ -306,6 +335,12 @@ void AMayaCharacter::HandleDialogueFinished()
 
 void AMayaCharacter::HandleCollpaseResetState(const ECollapseEndResult EndResult)
 {
+	// Stop sounds
+	if (MayaCryingAudioComponent && MayaCryingAudioComponent->IsPlaying())
+	{
+		MayaCryingAudioComponent->Stop();
+	}
+
 	switch (EndResult)
 	{
 	case ECollapseEndResult::Success:
@@ -353,6 +388,15 @@ void AMayaCharacter::HandleCollapsePhaseChanged(ECollapsePhase NewPhase)
 		if (CurrentState == EMayaState::Drawing || CurrentState == EMayaState::MovingToDrawing)
 		{
 			SetState(EMayaState::Panicked);
+		}
+
+		if (MayaCryingSound)
+		{
+			if (MayaCryingAudioComponent && MayaCryingAudioComponent->IsPlaying())
+			{
+				MayaCryingAudioComponent->Stop();
+			}
+			MayaCryingAudioComponent = UGameplayStatics::SpawnSoundAtLocation(this, MayaCryingSound, GetActorLocation());
 		}
 		break;
 	}

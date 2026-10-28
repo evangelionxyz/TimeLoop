@@ -55,8 +55,14 @@ public:
 	void SetVignettePulse(bool bEnablePulse, float PulseFrequency = 6.0f, float MinIntensity = 0.2f, float MaxIntensity = 1.2f, FVector2D MinSize = FVector2D(6.0f, 6.0f), FVector2D MaxSize = FVector2D(14.0f, 14.0f));
 
 
+	UFUNCTION(BlueprintCallable, Category = "Camera Effects|Shaking")
+	void FadeShakingParameters(float NewFrequency, float NewPitchIntensity, float NewRollIntensity, float NewVerticalIntensity, float FadeDuration);
+
 	UFUNCTION(BlueprintCallable, Category = "Play")
-	void PlayEarthQuakeShake(float Duration, float Intensity);
+	void PlayEarthQuakeShake(float Duration, float Intensity, float FadeOutDuration = 0.0f);
+
+	UFUNCTION(BlueprintCallable, Category = "Play")
+	void StopEarthQuakeShake(float FadeOutDuration = 0.5f);
 
 protected:
 	virtual void BeginPlay() override;
@@ -143,11 +149,25 @@ protected:
 	bool bEarthQuakeShaking = false;
 	float EarthQuakeShakeDuration = 0.0f;
 	float EarthQuakeShakeIntensity = 0.0f;
+	float EarthQuakeShakeFadeOutDuration = 0.0f;
+
+	bool bFadingShakingParameters = false;
+	float ShakingParamFadeDuration = 0.0f;
+	float ShakingParamFadeTimeRemaining = 0.0f;
+	float StartShakingFrequency = 0.0f;
+	float StartPitchIntensity = 0.0f;
+	float StartRollIntensity = 0.0f;
+	float StartVerticalIntensity = 0.0f;
+	float TargetShakingFrequency = 0.0f;
+	float TargetPitchIntensity = 0.0f;
+	float TargetRollIntensity = 0.0f;
+	float TargetVerticalIntensity = 0.0f;
 
 	FVector2D CurrentVignetteSize = FVector2D(10.0f, 10.0f);
 	FVector2D TargetVignetteSize = FVector2D(10.0f, 10.0f);
 
 private:
+	void UpdateShakingParamFade(float DeltaTime);
 	void PerformShaking(float DeltaTime);
 	void PerformLeaning(float DeltaTime);
 	void ApplyVignette(float DeltaTime);

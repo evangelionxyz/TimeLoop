@@ -36,7 +36,7 @@ enum class ECollapseEndResult : uint8
 };
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnCollapsePhaseChanged, ECollapsePhase, NewPhase);
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnCollapseCaption, FText, Message, float, Duration);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FOnCollapseCaption, FText, Message, float, Duration, FText, AdvanceKeyText);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnCollapseEvent, FName, EventId, AActor*, EventInstigator);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnCollapseCeilingTriggered);
 
@@ -110,7 +110,7 @@ public:
 
 	// Shows a line on the HUD: calls ShowMessage on HUD_TimeLoop / its HUDController if present, and broadcasts OnCollapseMessage.
 	UFUNCTION(BlueprintCallable, Category = "Collapse|Flow")
-	void ShowCaption(const FText& Message, float Duration = 4.0f);
+	void ShowCaption(const FText& Message, float Duration = 4.0f, const FText& AdvanceKeyText = FText::GetEmpty());
 
 	// --- Events ---
 
@@ -208,6 +208,9 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Collapse|Camera")
 	float InitialTremorIntensity = 1.2f;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Collapse|Camera", meta = (ClampMin = "0.0"))
+	float InitialTremorFadeOutDuration = 1.0f;
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Collapse|Camera")
 	float RuptureIntensity = 1.0f;
 
@@ -220,6 +223,9 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Collapse|Camera")
 	float SecondaryTremorIntensity = 2.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Collapse|Camera", meta = (ClampMin = "0.0"))
+	float SecondaryTremorFadeOutDuration = 1.5f;
 
 	// --- Props ---
 
@@ -265,18 +271,15 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Collapse|Audio")
 	TObjectPtr<USoundBase> BlackoutPopSound;
 
-	// "ETHAN?! THE LIGHTS WENT OUT!" through the intercom
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Collapse|Audio|Maya")
-	TObjectPtr<USoundBase> MayaScreamSound;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Collapse|Audio")
+	TObjectPtr<USoundBase> Backsound;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UAudioComponent> BacksoundAudioComponent;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Collapse|Audio|Maya")
 	TObjectPtr<USoundBase> MayaSurprisedSound;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Collapse|Audio|Maya")
-	TObjectPtr<USoundBase> MayaCryingSound;
-
-	UPROPERTY(Transient)
-	TObjectPtr<UAudioComponent> MayaCryingAudioComponent;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Collapse|Audio|Ethan")
 	TObjectPtr<USoundBase> HearthbeatSound;
@@ -345,7 +348,8 @@ private:
 	void RuptureEffectsTick();
 	void PropJitterTick();
 	void StartStutterLamps();
-	void RestoreShaking();
+	void RestoreShaking(bool bImmediate = false);
+	void OnAftershockFinished();
 
 	void ShowDialogueLine(int32 Index);
 	void EndDialogue();

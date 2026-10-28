@@ -10,10 +10,34 @@ UFPSCameraEffects::UFPSCameraEffects()
 
 void UFPSCameraEffects::SetShakingParameters(const float NewFrequency, const float NewPitchIntensity, const float NewRollIntensity, const float NewVerticalIntensity)
 {
+	bFadingShakingParameters = false;
 	ShakingFrequency = NewFrequency;
 	PitchIntensity = NewPitchIntensity;
 	RollIntensity = NewRollIntensity;
 	VerticalOffsetIntensity = NewVerticalIntensity;
+}
+
+void UFPSCameraEffects::FadeShakingParameters(const float NewFrequency, const float NewPitchIntensity, const float NewRollIntensity, const float NewVerticalIntensity, const float FadeDuration)
+{
+	if (FadeDuration <= 0.0f)
+	{
+		SetShakingParameters(NewFrequency, NewPitchIntensity, NewRollIntensity, NewVerticalIntensity);
+		return;
+	}
+
+	bFadingShakingParameters = true;
+	ShakingParamFadeDuration = FadeDuration;
+	ShakingParamFadeTimeRemaining = FadeDuration;
+
+	StartShakingFrequency = ShakingFrequency;
+	StartPitchIntensity = PitchIntensity;
+	StartRollIntensity = RollIntensity;
+	StartVerticalIntensity = VerticalOffsetIntensity;
+
+	TargetShakingFrequency = NewFrequency;
+	TargetPitchIntensity = NewPitchIntensity;
+	TargetRollIntensity = NewRollIntensity;
+	TargetVerticalIntensity = NewVerticalIntensity;
 }
 
 void UFPSCameraEffects::GetShakingParameters(float& OutFrequency, float& OutPitchIntensity, float& OutRollIntensity, float& OutVerticalIntensity) const
@@ -115,11 +139,34 @@ void UFPSCameraEffects::SetVignettePulse(bool bEnablePulse, float PulseFrequency
 	}
 }
 
-void UFPSCameraEffects::PlayEarthQuakeShake(float Duration, float Intensity)
+void UFPSCameraEffects::PlayEarthQuakeShake(float Duration, float Intensity, float FadeOutDuration)
 {
 	bEarthQuakeShaking = true;
 	EarthQuakeShakeDuration = Duration;
 	EarthQuakeShakeIntensity = Intensity;
+	EarthQuakeShakeFadeOutDuration = FMath::Clamp(FadeOutDuration, 0.0f, Duration);
+}
+
+void UFPSCameraEffects::StopEarthQuakeShake(float FadeOutDuration)
+{
+	if (!bEarthQuakeShaking)
+	{
+		return;
+	}
+
+	if (FadeOutDuration <= 0.0f)
+	{
+		bEarthQuakeShaking = false;
+		EarthQuakeShakeDuration = 0.0f;
+		EarthQuakeShakeFadeOutDuration = 0.0f;
+		ShakingPitch = 0.0f;
+		ShakingRoll = 0.0f;
+		ShakingVerticalOffset = 0.0f;
+		return;
+	}
+
+	EarthQuakeShakeDuration = FMath::Min(EarthQuakeShakeDuration, FadeOutDuration);
+	EarthQuakeShakeFadeOutDuration = EarthQuakeShakeDuration;
 }
 
 void UFPSCameraEffects::BeginPlay()
@@ -163,9 +210,13 @@ void UFPSCameraEffects::PerformShaking(const float DeltaTime)
 	RunningTime += ShakingFrequency * DeltaTime;
 	const float ShakingValue = RunningTime * ShakingFrequency;
 
-	ShakingPitch = FMath::Sin(ShakingValue) * PitchIntensity;
-	ShakingRoll = (FMath::Cos(ShakingValue) * 0.5f) * RollIntensity;
-	ShakingVerticalOffset = (FMath::Sin(ShakingValue) * 2.0f) * VerticalOffsetIntensity;
+	const float TargetPitch = FMath::Sin(ShakingValue) * PitchIntensity;
+	const float TargetRoll = (FMath::Cos(ShakingValue) * 0.5f) * RollIntensity;
+	const float TargetVerticalOffset = (FMath::Sin(ShakingValue) * 2.0f) * VerticalOffsetIntensity;
+
+	ShakingPitch = FMath::FInterpTo(ShakingPitch, TargetPitch, DeltaTime, 10.0f);
+	ShakingRoll = FMath::FInterpTo(ShakingRoll, TargetRoll, DeltaTime, 10.0f);
+	ShakingVerticalOffset = FMath::FInterpTo(ShakingVerticalOffset, TargetVerticalOffset, DeltaTime, 10.0f);
 }
 
 
@@ -231,6 +282,32 @@ void UFPSCameraEffects::ApplyVignette(const float DeltaTime)
 	Camera->PostProcessSettings.VignetteSize = FVector2f(CurrentVignetteSize.X, CurrentVignetteSize.Y);
 }
 
+void UFPSCameraEffects::UpdateShakingParamFade(const float DeltaTime)
+{
+	if (!bFadingShakingParameters)
+	{
+		return;
+	}
+
+	ShakingParamFadeTimeRemaining -= DeltaTime;
+	if (ShakingParamFadeTimeRemaining <= 0.0f)
+	{
+		bFadingShakingParameters = false;
+		ShakingFrequency = TargetShakingFrequency;
+		PitchIntensity = TargetPitchIntensity;
+		RollIntensity = TargetRollIntensity;
+		VerticalOffsetIntensity = TargetVerticalIntensity;
+	}
+	else
+	{
+		const float Alpha = 1.0f - (ShakingParamFadeTimeRemaining / ShakingParamFadeDuration);
+		ShakingFrequency = FMath::Lerp(StartShakingFrequency, TargetShakingFrequency, Alpha);
+		PitchIntensity = FMath::Lerp(StartPitchIntensity, TargetPitchIntensity, Alpha);
+		RollIntensity = FMath::Lerp(StartRollIntensity, TargetRollIntensity, Alpha);
+		VerticalOffsetIntensity = FMath::Lerp(StartVerticalIntensity, TargetVerticalIntensity, Alpha);
+	}
+}
+
 void UFPSCameraEffects::PerformEarthQuakeShaking(float DeltaTime)
 {
 	static float RunningTime = 0.0f;
@@ -249,11 +326,24 @@ void UFPSCameraEffects::PerformEarthQuakeShaking(float DeltaTime)
 	{
 		bEarthQuakeShaking = false;
 		EarthQuakeShakeDuration = 0.0f;
+		EarthQuakeShakeFadeOutDuration = 0.0f;
+		ShakingPitch = 0.0f;
+		ShakingRoll = 0.0f;
+		ShakingVerticalOffset = 0.0f;
+		RunningTime = 0.0f;
+		return;
 	}
 
-	ShakingPitch = FMath::Sin(ShakingValue) * PitchIntensity * EarthQuakeShakeIntensity;
-	ShakingRoll = (FMath::Cos(ShakingValue) * 0.5f) * RollIntensity * EarthQuakeShakeIntensity;
-	ShakingVerticalOffset = (FMath::Sin(ShakingValue) * 2.0f) * VerticalOffsetIntensity * EarthQuakeShakeIntensity;
+	float CurrentIntensity = EarthQuakeShakeIntensity;
+	if (EarthQuakeShakeFadeOutDuration > 0.0f && EarthQuakeShakeDuration < EarthQuakeShakeFadeOutDuration)
+	{
+		const float Alpha = EarthQuakeShakeDuration / EarthQuakeShakeFadeOutDuration;
+		CurrentIntensity *= FMath::Clamp(Alpha, 0.0f, 1.0f);
+	}
+
+	ShakingPitch = FMath::Sin(ShakingValue) * PitchIntensity * CurrentIntensity;
+	ShakingRoll = (FMath::Cos(ShakingValue) * 0.5f) * RollIntensity * CurrentIntensity;
+	ShakingVerticalOffset = (FMath::Sin(ShakingValue) * 2.0f) * VerticalOffsetIntensity * CurrentIntensity;
 }
 
 // Called every frame
@@ -264,6 +354,7 @@ void UFPSCameraEffects::TickComponent(const float DeltaTime, ELevelTick TickType
 	if (!Camera)
 		return;
 
+	UpdateShakingParamFade(DeltaTime);
 	PerformShaking(DeltaTime);
 	PerformLeaning(DeltaTime);
 	ApplyVignette(DeltaTime);

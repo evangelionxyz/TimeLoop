@@ -11,6 +11,7 @@
 
 class ACollapseDirector;
 class ATimeLoopGameState;
+class USoundBase;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnMayaStateChangedNative, EMayaState, NewState, EMayaState, OldState);
 
@@ -96,7 +97,17 @@ public:
 	FName ApproachEthanId = TEXT("ApproachEthan");
 
 	// Sound
+	UPROPERTY(Transient)
+	TObjectPtr<UAudioComponent> MayaCryingAudioComponent;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Collapse|Audio|Maya")
+	TObjectPtr<USoundBase> MayaCryingSound;
+
+	// "ETHAN?! THE LIGHTS WENT OUT!" through the intercom
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Collapse|Audio|Maya")
+	TObjectPtr<USoundBase> MayaScreamSound;
+
+	void PlayScreamSound();
 
 protected:
 	void HandleMoveCompleted(FAIRequestID RequestID, const FPathFollowingResult& Result);
